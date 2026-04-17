@@ -10,15 +10,16 @@ back to the owner after each stage.
 
 - skill entrypoint exists at `SKILL.md`
 - local skill install path is `~/.codex/skills/delivery-flow`
-- real-task E2E validation has passed
-- repository verification baseline is `uv run pytest` -> `11 passed`
+- default-use path now enters the executable stage-2 runtime
+- real-task runtime validation has passed
+- repository verification baseline is `uv run pytest` -> `27 passed`
 
 ## Highlights
 
 - explicit mode selection: `superpowers-backed` or `fallback`
 - controller-owned review normalization: `pass / blocker / needs_owner_decision`
 - controller-owned blocker identity derivation
-- owner-visible stop-and-wait contract after terminal states
+- runtime-owned trace and owner-visible stop-and-wait contract after terminal states
 
 ## Quick Install For Codex
 
@@ -53,15 +54,21 @@ Local skill entrypoint:
   Agent-facing install instructions for Codex raw fetch flows.
 - [SKILL.md](./SKILL.md)
   Skill contract loaded by Codex.
+- [docs/stage-2-real-task-validation.md](./docs/stage-2-real-task-validation.md)
+  Published runtime-backed validation evidence.
 
 ## Repository Layout
 
 - `SKILL.md`
   Main skill entrypoint.
 - `src/delivery_flow/controller.py`
-  Controller contract helpers, mode selection, review normalization, blocker identity.
-- `src/delivery_flow/drivers/superpowers.py`
-  Preferred backend adapter surface.
+  Controller contract helpers and public runtime launcher.
+- `src/delivery_flow/runtime/`
+  Executable stage-2 runtime, stop rules, and engine state progression.
+- `src/delivery_flow/trace/`
+  Run trace and terminal evidence holder.
+- `src/delivery_flow/adapters/`
+  Runtime-facing `superpowers-backed` and `fallback` adapters.
 - `superpowers-backed.md`
   Preferred backend contract.
 - `fallback.md`
@@ -78,16 +85,18 @@ cd /home/mm/workdir/projects/delivery-flow
 uv run pytest
 ```
 
-Current baseline: `11 passed`
+Current baseline: `27 passed`
 
 ## Current Scope
 
-This repository now proves one real owner-facing workflow loop:
+This repository now proves a runtime-backed owner-facing workflow loop:
 
 - the skill can be installed and discovered by Codex
-- the controller contract is documented
-- one real task has demonstrated `spec -> plan -> dev -> review -> fix`
-- reviewer re-review has confirmed the owner-facing continuous loop behavior
+- the controller runtime executes `spec -> plan -> dev -> review -> fix -> stop`
+- the default-use path enters the runtime directly
+- workflow tests cover pass, blocker recovery, repeated blocker, needs-owner-decision, and verification-unavailable paths
+- one runtime-backed validation run has been published as repository evidence
+- reviewer re-review has confirmed the runtime-backed continuous loop behavior
 
 ## Next Steps
 
@@ -95,6 +104,6 @@ Future work is no longer “finish the first release”. It is a new round of go
 for example:
 
 - larger end-to-end task validation
-- repeated blocker cycles
-- `needs_owner_decision` terminal-state validation
+- broader real-task validation
+- workflow evidence publication
 - broader backend parity hardening

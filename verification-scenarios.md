@@ -18,12 +18,21 @@
 - expect same-blocker identity to be controller-owned
 - expect stop after the second unresolved cycle
 
-## Scenario 4: Verification Unavailable Stops
+## Scenario 4: Verification-Unavailable Stops Without Guessing Blocker Identity
 
 - run in both modes
-- expect stop when required verification cannot be completed with available evidence
+- review returns `changes_requested`
+- one or more blocker identity fields are missing
+- runtime stops with `required_verification_cannot_be_completed_with_available_evidence`
+- terminal summary explains the evidence insufficiency reason
 
 ## Scenario 5: Mode Banner Is Explicit
 
 - run in both modes
 - expect visible `mode=superpowers-backed` or `mode=fallback`
+
+## Scenario 6: Default Runtime Path
+
+- invoke the public launcher / default-use path
+- expect one continuous runtime-owned stage sequence
+- expect the owner-visible final summary to include `waiting for the owner's next instruction`

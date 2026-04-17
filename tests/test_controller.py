@@ -92,7 +92,7 @@ def test_blocker_identity_derivation_extracts_controller_owned_fields() -> None:
 def test_blocker_identity_derivation_requires_all_identity_fields() -> None:
     controller = MainAgentLoopController()
 
-    with pytest.raises(RuntimeError, match="Missing blocker identity field"):
+    with pytest.raises(RuntimeError, match="available evidence"):
         controller.derive_blocker_identity(
             {
                 "contract_area": "required verification evidence",

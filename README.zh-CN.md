@@ -9,15 +9,16 @@
 
 - 仓库内已经有真实 skill 入口：`SKILL.md`
 - 本机 skill 安装入口：`~/.codex/skills/delivery-flow`
-- 已通过一条真实任务的 E2E 验证
-- 当前仓库验证基线：`uv run pytest` -> `11 passed`
+- 默认主用路径现在会进入可执行的 stage-2 runtime
+- real-task runtime validation 已通过
+- 当前仓库验证基线：`uv run pytest` -> `27 passed`
 
 ## 核心能力
 
 - 显式 mode 选择：`superpowers-backed` / `fallback`
 - controller 自己归一 review 结果：`pass / blocker / needs_owner_decision`
 - controller 自己定义 blocker identity
-- terminal state 统一走 owner-visible 的 stop-and-wait 收口
+- runtime/trace 自己产出 owner-visible 的 stop-and-wait 收口
 
 ## 给 Codex 的快速安装方式
 
@@ -52,15 +53,21 @@ ln -s /home/mm/workdir/projects/delivery-flow ~/.codex/skills/delivery-flow
   给 agent 直接执行的安装文档。
 - [SKILL.md](./SKILL.md)
   Codex 加载时读取的 skill 合约。
+- [docs/stage-2-real-task-validation.md](./docs/stage-2-real-task-validation.md)
+  已发布的 runtime-backed 验证证据。
 
 ## 仓库结构
 
 - `SKILL.md`
   skill 主入口。
 - `src/delivery_flow/controller.py`
-  controller 的 mode 选择、review 归一、blocker identity。
-- `src/delivery_flow/drivers/superpowers.py`
-  优先 backend 的适配层。
+  controller contract helper 和 public runtime launcher。
+- `src/delivery_flow/runtime/`
+  可执行的 stage-2 runtime、stop rules 和状态推进。
+- `src/delivery_flow/trace/`
+  run trace 与 terminal evidence holder。
+- `src/delivery_flow/adapters/`
+  runtime-facing 的 `superpowers-backed` / `fallback` adapters。
 - `superpowers-backed.md`
   `superpowers` backend 合约。
 - `fallback.md`
@@ -77,22 +84,23 @@ cd /home/mm/workdir/projects/delivery-flow
 uv run pytest
 ```
 
-当前基线：`11 passed`
+当前基线：`27 passed`
 
 ## 当前已证明的范围
 
 这一版已经证明了以下几点：
 
 - skill 可以被 Codex 安装并发现
-- controller contract 已写清
-- 已有一条真实任务证明 `spec -> plan -> dev -> review -> fix`
-- reviewer 的 re-review 已确认 owner-facing 连续驱动成立
+- controller runtime 已经能执行 `spec -> plan -> dev -> review -> fix -> stop`
+- 默认主用路径会直接进入 runtime
+- workflow tests 已覆盖 pass、blocker recovery、same-blocker、needs-owner-decision、verification-unavailable
+- 仓库内已经发布一条 runtime-backed validation 证据
+- reviewer 的 re-review 已确认 runtime-backed 连续驱动成立
 
 ## 下一轮可继续做的事
 
 后续不再是“补完第一版”，而是进入下一轮目标，例如：
 
 - 更大的真实任务验证
-- 多轮 blocker 场景
-- `needs_owner_decision` 终态验证
+- workflow 证据发布
 - 更严格的 backend parity 强化

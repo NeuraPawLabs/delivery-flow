@@ -59,7 +59,7 @@ Expected result:
 
 - the symlink resolves to the repo
 - `SKILL.md` exists at the linked path
-- `uv run pytest` reports `11 passed`
+- `uv run pytest` reports `27 passed`
 
 ## Updating
 

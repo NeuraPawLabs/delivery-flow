@@ -88,6 +88,19 @@ The controller must stop when:
 
 After every terminal state, the controller must summarize delivery, summarize verification and residual risk, and explicitly say it is waiting for the owner's next instruction.
 
+## Default Runtime Path
+
+When `delivery-flow` is invoked, the main agent starts one controller-owned engine run.
+
+The runtime:
+
+- selects mode explicitly
+- drives `spec -> plan -> dev -> review -> fix -> stop`
+- records stage evidence in the run trace
+- emits a terminal stop-and-wait summary
+
+The owner does not need to restitch the next stage manually after each step.
+
 ## Supporting Docs
 
 - `superpowers-backed.md`
@@ -104,3 +117,4 @@ After every terminal state, the controller must summarize delivery, summarize ve
 - review results normalize to `pass / blocker / needs_owner_decision`
 - no explicit `pass` means no completion
 - terminal states end in stop-and-wait
+- default-use path enters the runtime directly
