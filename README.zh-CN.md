@@ -1,82 +1,76 @@
 # Delivery Flow
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+`delivery-flow` 是一个给 Codex 使用的 skill 和控制器约定，用来把单条任务持续推进过
+`spec -> dev -> review -> fix -> stop`，而不是每一轮都重新断回 owner 手里。
 
-`delivery-flow` 是一个面向 Codex 的工作流 skill 仓库，用来把同一条任务持续推进到：
-
-- `spec`
-- `dev`
-- `review`
-- `fix`
-- `stop`
-
-它保持一套稳定的 owner-facing contract，并支持两种显式 mode：
-
-- `superpowers-backed`
-- `fallback`
+[English README](./README.md) | [Codex 指南](./docs/README.codex.zh-CN.md) | [Codex Guide](./docs/README.codex.md)
 
 ## 当前状态
 
-当前仓库已经完成首轮实现，并具备可消费的 skill 入口：
+- 仓库内已经有真实 skill 入口：`SKILL.md`
+- 本机 skill 安装入口：`~/.codex/skills/delivery-flow`
+- 已通过一条真实任务的 E2E 验证
+- 当前仓库验证基线：`uv run pytest` -> `11 passed`
 
-- skill 入口：`~/.codex/skills/delivery-flow/SKILL.md`
-- 远端仓库：`git@github.com:NeuraPawLabs/delivery-flow.git`
-- 当前验证基线：`uv run pytest` -> `11 passed`
+## 核心能力
 
-## 安装
+- 显式 mode 选择：`superpowers-backed` / `fallback`
+- controller 自己归一 review 结果：`pass / blocker / needs_owner_decision`
+- controller 自己定义 blocker identity
+- terminal state 统一走 owner-visible 的 stop-and-wait 收口
 
-### 给 Codex 的快捷安装入口
+## 给 Codex 的快速安装方式
 
-告诉 Codex：
+直接告诉 Codex：
 
 ```text
 Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLabs/delivery-flow/main/.codex/INSTALL.md
 ```
 
-### 详细安装文档
-
-- Codex 安装指南：`docs/README.codex.md`
-- Codex 安装指南（中文）：`docs/README.codex.zh-CN.md`
-- agent-facing 安装入口：`.codex/INSTALL.md`
-
-### 当前机器上的本地安装方式
+当前机器手动安装：
 
 ```bash
 mkdir -p ~/.codex/skills
 ln -s /home/mm/workdir/projects/delivery-flow ~/.codex/skills/delivery-flow
 ```
 
-## 使用场景
+安装后的 skill 入口：
 
-适用于这些场景：
+```text
+~/.codex/skills/delivery-flow/SKILL.md
+```
 
-- 你希望主 agent 持续驱动 `spec -> dev -> review -> fix`
-- 你不希望流程在每一轮 review 后重新断回 owner 手里
-- 你希望 `superpowers-backed` 和 `fallback` 保持同一套 owner-visible contract
+## 文档导航
 
-不适用于这些场景：
+- [README.md](./README.md)
+  英文项目概览。
+- [docs/README.codex.zh-CN.md](./docs/README.codex.zh-CN.md)
+  中文 Codex 安装与使用说明。
+- [docs/README.codex.md](./docs/README.codex.md)
+  英文 Codex 安装与使用说明。
+- [.codex/INSTALL.md](./.codex/INSTALL.md)
+  给 agent 直接执行的安装文档。
+- [SKILL.md](./SKILL.md)
+  Codex 加载时读取的 skill 合约。
 
-- 需要跨多个项目做持久化任务编排
-- 需要独立的 task board / coordinator 基础设施
-
-## 仓库内容
+## 仓库结构
 
 - `SKILL.md`
-  主 skill 入口。
-- `.codex/INSTALL.md`
-  给 Codex/agent 直接消费的安装说明。
-- `docs/README.codex.md`
-  给人类阅读的英文 Codex 安装说明。
-- `docs/README.codex.zh-CN.md`
-  给人类阅读的中文 Codex 安装说明。
+  skill 主入口。
+- `src/delivery_flow/controller.py`
+  controller 的 mode 选择、review 归一、blocker identity。
+- `src/delivery_flow/drivers/superpowers.py`
+  优先 backend 的适配层。
 - `superpowers-backed.md`
-  `superpowers` 后端动作映射与 mode contract。
+  `superpowers` backend 合约。
 - `fallback.md`
-  `fallback` 后端最小一致性 contract。
+  fallback backend 合约。
 - `verification-scenarios.md`
-  双 mode 一致性与 stop-rule 验证场景。
+  双 mode 一致性场景。
+- `tests/`
+  仓库测试基线。
 
-## 本地验证
+## 验证方式
 
 ```bash
 cd /home/mm/workdir/projects/delivery-flow
@@ -85,18 +79,20 @@ uv run pytest
 
 当前基线：`11 passed`
 
-## 更新与卸载
+## 当前已证明的范围
 
-更新仓库：
+这一版已经证明了以下几点：
 
-```bash
-cd ~/.codex/delivery-flow && git pull
-uv run pytest
-```
+- skill 可以被 Codex 安装并发现
+- controller contract 已写清
+- 已有一条真实任务证明 `spec -> plan -> dev -> review -> fix`
+- reviewer 的 re-review 已确认 owner-facing 连续驱动成立
 
-卸载 skill：
+## 下一轮可继续做的事
 
-```bash
-rm ~/.codex/skills/delivery-flow
-rm -rf ~/.codex/delivery-flow
-```
+后续不再是“补完第一版”，而是进入下一轮目标，例如：
+
+- 更大的真实任务验证
+- 多轮 blocker 场景
+- `needs_owner_decision` 终态验证
+- 更严格的 backend parity 强化

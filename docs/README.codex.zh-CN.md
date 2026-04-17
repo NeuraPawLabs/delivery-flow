@@ -1,12 +1,12 @@
 # Delivery Flow for Codex
 
-[English](README.codex.md) | [简体中文](README.codex.zh-CN.md)
+这是给 Codex agent 看的中文安装与使用说明。
 
-这是 `delivery-flow` 在 Codex 中的安装与使用说明。
+[English Version](./README.codex.md) | [项目主页](../README.zh-CN.md)
 
 ## 快速安装
 
-告诉 Codex：
+直接告诉 Codex：
 
 ```text
 Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLabs/delivery-flow/main/.codex/INSTALL.md
@@ -20,7 +20,7 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 - Git
 - `uv`，用于本地验证
 
-### 安装步骤
+### 步骤
 
 1. 克隆仓库：
    ```bash
@@ -37,7 +37,7 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 
 ### Windows
 
-Windows 下可用 junction 代替 symlink：
+Windows 上可以使用 junction：
 
 ```powershell
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.codex\skills"
@@ -46,32 +46,31 @@ cmd /c mklink /J "$env:USERPROFILE\.codex\skills\delivery-flow" "$env:USERPROFIL
 
 ## 工作方式
 
-Codex 会在 session 启动时扫描 `~/.codex/skills/`，读取 `SKILL.md`
-frontmatter，并在需要时加载对应 skill。`delivery-flow` 的可见路径是：
+Codex 会在会话启动时扫描 `~/.codex/skills/`，读取 `SKILL.md` frontmatter，
+并在需要时按需加载 skill。`delivery-flow` 通过下面这条软链接暴露给 Codex：
 
 ```text
 ~/.codex/skills/delivery-flow -> ~/.codex/delivery-flow
 ```
 
-安装完成后，这个 skill 会暴露一套统一的 controller contract，并支持两种显式
-mode：
+安装完成后，这个 skill 提供一条稳定的 controller contract，并支持两个显式 mode：
 
 - `superpowers-backed`
 - `fallback`
 
 ## 使用方式
 
-启动一个新的 Codex session，然后给出适合连续交付编排的任务，例如：
+启动新的 Codex 会话后，可以直接要求它使用 `delivery-flow`，例如：
 
 - “Use delivery-flow to keep this feature moving through spec, dev, review, and fix.”
 - “Run this task with delivery-flow and stop only when owner input is required.”
 
-Codex 会在这些情况下自动发现它：
+Codex 通常会在两种情况下自动发现它：
 
 - 你直接提到 `delivery-flow`
-- 当前任务匹配 `SKILL.md` 的描述
+- 任务描述命中 `SKILL.md` 里的触发条件
 
-## 验证安装
+## 安装验证
 
 验证 skill 入口：
 
@@ -88,7 +87,7 @@ cd ~/.codex/delivery-flow
 uv run pytest
 ```
 
-预期基线：`11 passed`
+当前期望基线：`11 passed`
 
 ## 更新
 
@@ -97,7 +96,7 @@ cd ~/.codex/delivery-flow && git pull
 uv run pytest
 ```
 
-更新后重启 Codex，这样新的 session 会读取到最新的 skill 元数据。
+更新后建议重启 Codex，让下一次会话读取最新的 skill 元数据。
 
 ## 卸载
 
@@ -106,16 +105,16 @@ rm ~/.codex/skills/delivery-flow
 rm -rf ~/.codex/delivery-flow
 ```
 
-## 故障排查
+## 常见问题
 
-### 找不到 skill
+### Skill 没有被发现
 
-1. 确认软链接存在：`ls -la ~/.codex/skills/delivery-flow`
-2. 确认入口文件存在：`test -f ~/.codex/skills/delivery-flow/SKILL.md`
-3. 重启 Codex。skill discovery 发生在 session 启动时。
+1. 检查软链接：`ls -la ~/.codex/skills/delivery-flow`
+2. 检查 skill 入口：`test -f ~/.codex/skills/delivery-flow/SKILL.md`
+3. 重启 Codex。skill discovery 发生在会话启动时。
 
 ### 测试跑不起来
 
-1. 确认 `uv` 已安装。
-2. 在 `~/.codex/delivery-flow` 里执行 `uv sync`。
-3. 重新执行 `uv run pytest`。
+1. 确认系统里有 `uv`
+2. 在 `~/.codex/delivery-flow` 内运行 `uv sync`
+3. 再运行 `uv run pytest`
