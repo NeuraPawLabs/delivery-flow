@@ -1,5 +1,7 @@
 # Delivery Flow
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 `delivery-flow` is the repository for the Delivery Flow skill and its supporting
 controller artifacts.
 

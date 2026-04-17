@@ -1,5 +1,7 @@
 # Delivery Flow for Codex
 
+[English](README.codex.md) | [简体中文](README.codex.zh-CN.md)
+
 Guide for installing and using `delivery-flow` with Codex via native skill
 discovery.
 
