@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import StrEnum
 
 
@@ -18,6 +19,13 @@ class NormalizedReviewResult(StrEnum):
     PASS = "pass"
     BLOCKER = "blocker"
     NEEDS_OWNER_DECISION = "needs_owner_decision"
+
+
+@dataclass(frozen=True)
+class BlockerIdentity:
+    contract_area: str
+    failure_kind: str
+    expected_resolution: str
 
 
 class MainAgentLoopController:
@@ -57,3 +65,20 @@ class MainAgentLoopController:
             return normalized_map[raw_result]
         except KeyError as exc:
             raise RuntimeError(f"Unknown raw review result: {raw_result}") from exc
+
+    def derive_blocker_identity(self, review_payload: dict[str, str]) -> BlockerIdentity:
+        required_fields = (
+            "contract_area",
+            "failure_kind",
+            "expected_resolution",
+        )
+        missing_fields = [field for field in required_fields if not review_payload.get(field)]
+        if missing_fields:
+            missing = ", ".join(missing_fields)
+            raise RuntimeError(f"Missing blocker identity field: {missing}")
+
+        return BlockerIdentity(
+            contract_area=review_payload["contract_area"],
+            failure_kind=review_payload["failure_kind"],
+            expected_resolution=review_payload["expected_resolution"],
+        )

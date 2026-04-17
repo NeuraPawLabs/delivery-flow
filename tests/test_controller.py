@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from delivery_flow.controller import (
+    BlockerIdentity,
     ControllerState,
     MainAgentLoopController,
     NormalizedReviewResult,
@@ -67,3 +68,34 @@ def test_review_result_normalization_rejects_unknown_raw_results() -> None:
 
     with pytest.raises(RuntimeError, match="Unknown raw review result"):
         controller.normalize_review_result("shrug")
+
+
+def test_blocker_identity_derivation_extracts_controller_owned_fields() -> None:
+    controller = MainAgentLoopController()
+
+    identity = controller.derive_blocker_identity(
+        {
+            "contract_area": "stop-rule handling",
+            "failure_kind": "incorrect behavior",
+            "expected_resolution": "same blocker stops after two cycles",
+            "backend_note": "wording that should not matter",
+        }
+    )
+
+    assert identity == BlockerIdentity(
+        contract_area="stop-rule handling",
+        failure_kind="incorrect behavior",
+        expected_resolution="same blocker stops after two cycles",
+    )
+
+
+def test_blocker_identity_derivation_requires_all_identity_fields() -> None:
+    controller = MainAgentLoopController()
+
+    with pytest.raises(RuntimeError, match="Missing blocker identity field"):
+        controller.derive_blocker_identity(
+            {
+                "contract_area": "required verification evidence",
+                "failure_kind": "verification gap",
+            }
+        )
