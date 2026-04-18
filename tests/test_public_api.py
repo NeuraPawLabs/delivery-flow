@@ -118,3 +118,7 @@ def test_run_delivery_flow_accepts_requirement_artifact_and_returns_public_runti
 
     assert isinstance(result, RuntimeResult)
     assert result.mode == "superpowers-backed"
+    assert result.completed_task_ids == ["task-1"]
+    assert result.pending_task_id is None
+    assert result.open_issue_summaries == []
+    assert result.owner_acceptance_required is True
