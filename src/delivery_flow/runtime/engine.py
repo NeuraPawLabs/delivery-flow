@@ -4,6 +4,7 @@ from dataclasses import asdict
 
 from delivery_flow.contracts import (
     DeliveryArtifact,
+    FinalizationArtifact,
     PlanArtifact,
     PlanTaskArtifact,
     RequirementArtifact,
@@ -34,6 +35,10 @@ class DeliveryFlowRuntime:
         self._sequence = [self.state.value]
         self._last_blocker_identity: BlockerIdentity | None = None
         self._previous_blocker_identity: BlockerIdentity | None = None
+        self._completed_task_ids: list[str] = []
+        self._pending_task_id: str | None = None
+        self._open_issue_summaries: list[str] = []
+        self._owner_acceptance_required = True
         self.trace: RunTrace | None = None
 
     def _coerce_plan_task(self, payload: PlanTaskArtifact | dict[str, object], index: int) -> PlanTaskArtifact:
@@ -105,6 +110,24 @@ class DeliveryFlowRuntime:
             ),
         )
 
+    def _coerce_finalization_artifact(
+        self,
+        payload: FinalizationArtifact | dict[str, object] | None,
+        latest_delivery: DeliveryArtifact | dict[str, object],
+    ) -> FinalizationArtifact:
+        latest = self._coerce_delivery_artifact(latest_delivery)
+        if isinstance(payload, FinalizationArtifact):
+            return payload
+
+        source = payload or {}
+        return FinalizationArtifact(
+            delivery_summary=str(source.get("delivery_summary", latest.delivery_summary)),
+            verification_evidence=[str(item) for item in source.get("verification_evidence", latest.verification_evidence)],
+            residual_risk=[str(item) for item in source.get("residual_risk", latest.residual_risk)],
+            owner_acceptance_required=bool(source.get("owner_acceptance_required", True)),
+            final_review_summary=str(source.get("final_review_summary", source.get("final_summary", ""))),
+        )
+
     def _build_task_context(
         self,
         plan: PlanArtifact,
@@ -127,6 +150,44 @@ class DeliveryFlowRuntime:
     def _reset_task_blockers(self) -> None:
         self._last_blocker_identity = None
         self._previous_blocker_identity = None
+
+    def _summarize_blocker(self, blocker_identity: dict[str, str]) -> str:
+        return (
+            f"{blocker_identity['contract_area']}: {blocker_identity['failure_kind']} -> "
+            f"{blocker_identity['expected_resolution']}"
+        )
+
+    def _summarize_open_issues(
+        self,
+        review_payload: dict[str, object],
+        blocker_identity: dict[str, str] | None = None,
+    ) -> list[str]:
+        summaries: list[str] = []
+
+        for field in ("findings", "required_changes", "testing_issues", "maintainability_issues"):
+            for item in review_payload.get(field, []):
+                summary = str(item)
+                if summary not in summaries:
+                    summaries.append(summary)
+
+        owner_reason = review_payload.get("owner_decision_reason")
+        if owner_reason:
+            owner_summary = str(owner_reason)
+            if owner_summary not in summaries:
+                summaries.append(owner_summary)
+
+        if blocker_identity is not None and not summaries:
+            summaries.append(self._summarize_blocker(blocker_identity))
+
+        return summaries
+
+    def _summarize_verification_unavailable_issue(self, error: RuntimeError) -> str:
+        message = str(error)
+        marker = "missing blocker identity fields: "
+        if marker in message:
+            missing_fields = message.split(marker, 1)[1]
+            return f"review blocker identity incomplete: missing {missing_fields}"
+        return "required verification cannot be completed with available evidence"
 
     def _review_requires_blocker_downgrade(self, review_payload: dict[str, object]) -> bool:
         return any(
@@ -211,15 +272,23 @@ class DeliveryFlowRuntime:
         self.state = ControllerState.DISCUSSING_REQUIREMENT
         self._sequence = [self.state.value]
         self._reset_task_blockers()
+        self._completed_task_ids = []
+        self._pending_task_id = None
+        self._open_issue_summaries = []
+        self._owner_acceptance_required = True
         self.trace = None
 
     def _stop(
         self,
         stop_reason: StopReason,
-        latest_delivery: DeliveryArtifact | dict[str, object],
+        latest_delivery: DeliveryArtifact | FinalizationArtifact | dict[str, object],
         review_payload: ReviewArtifact | dict[str, object],
     ) -> RuntimeResult:
-        delivery_payload = asdict(latest_delivery) if isinstance(latest_delivery, DeliveryArtifact) else latest_delivery
+        delivery_payload = (
+            asdict(latest_delivery)
+            if isinstance(latest_delivery, (DeliveryArtifact, FinalizationArtifact))
+            else latest_delivery
+        )
         review_dict = asdict(review_payload) if isinstance(review_payload, ReviewArtifact) else review_payload
         self._transition_to(ControllerState.WAITING_FOR_OWNER)
         final_summary = (
@@ -228,6 +297,9 @@ class DeliveryFlowRuntime:
                 verification_evidence=list(delivery_payload.get("verification_evidence", [])),
                 residual_risk=list(delivery_payload.get("residual_risk", [])),
                 stop_reason=stop_reason,
+                completed_task_ids=list(self._completed_task_ids),
+                open_issue_summaries=list(self._open_issue_summaries),
+                owner_acceptance_required=self._owner_acceptance_required,
                 owner_decision_reason=review_dict.get("owner_decision_reason"),
             )
             if self.trace is not None
@@ -239,6 +311,10 @@ class DeliveryFlowRuntime:
             stage_sequence=list(self.trace.stage_sequence if self.trace is not None else self._sequence),
             stop_reason=stop_reason,
             final_summary=final_summary,
+            completed_task_ids=list(self._completed_task_ids),
+            pending_task_id=self._pending_task_id,
+            open_issue_summaries=list(self._open_issue_summaries),
+            owner_acceptance_required=self._owner_acceptance_required,
         )
 
     def _handle_review(
@@ -249,6 +325,7 @@ class DeliveryFlowRuntime:
         latest_delivery: DeliveryArtifact | dict[str, object],
     ) -> tuple[RuntimeResult | None, DeliveryArtifact | dict[str, object]]:
         review_dict = asdict(review_payload) if isinstance(review_payload, ReviewArtifact) else dict(review_payload)
+        task_id = plan_artifact.tasks[task_index].task_id
         normalized = self.normalize_review_result(str(review_dict["raw_result"]))
         if normalized is NormalizedReviewResult.PASS and self._review_requires_blocker_downgrade(review_dict):
             self._apply_strict_pass_blocker_defaults(review_dict)
@@ -263,12 +340,19 @@ class DeliveryFlowRuntime:
                 )
             return None, latest_delivery
         if normalized is NormalizedReviewResult.NEEDS_OWNER_DECISION:
+            self._open_issue_summaries = self._summarize_open_issues(review_dict)
             if self.trace is not None:
                 self.trace.record_review(
                     raw_result=str(review_dict["raw_result"]),
                     normalized_result=normalized.value,
                     blocker_identity=None,
                 )
+                if self._open_issue_summaries:
+                    self.trace.record_issue_action(
+                        task_id=task_id,
+                        action="owner_decision_required",
+                        summary=self._open_issue_summaries[0],
+                    )
             return self._stop(StopReason.NEEDS_OWNER_DECISION, latest_delivery, review_dict), latest_delivery
 
         try:
@@ -278,23 +362,46 @@ class DeliveryFlowRuntime:
                 "failure_kind": identity.failure_kind,
                 "expected_resolution": identity.expected_resolution,
             }
-        except RuntimeError:
+        except RuntimeError as error:
             if self.trace is not None:
                 self.trace.record_review(
                     raw_result=str(review_dict["raw_result"]),
                     normalized_result=normalized.value,
                     blocker_identity=None,
                 )
+            issue_summaries = self._summarize_open_issues(review_dict)
+            if not issue_summaries:
+                issue_summaries = [self._summarize_verification_unavailable_issue(error)]
+            self._open_issue_summaries = issue_summaries
+            if self.trace is not None:
+                self.trace.record_issue_action(
+                    task_id=task_id,
+                    action="verification_unavailable",
+                    summary=issue_summaries[0],
+                )
             return self._stop(StopReason.VERIFICATION_UNAVAILABLE, latest_delivery, review_dict), latest_delivery
 
+        issue_summary = self._summarize_blocker(blocker_identity)
         if self.trace is not None:
             self.trace.record_review(
                 raw_result=str(review_dict["raw_result"]),
                 normalized_result=normalized.value,
                 blocker_identity=blocker_identity,
             )
+            self.trace.record_issue_action(
+                task_id=task_id,
+                action="fix_requested",
+                summary=issue_summary,
+            )
 
         if identity == self._last_blocker_identity == self._previous_blocker_identity:
+            self._open_issue_summaries = self._summarize_open_issues(review_dict, blocker_identity)
+            if self.trace is not None and self._open_issue_summaries:
+                self.trace.record_issue_action(
+                    task_id=task_id,
+                    action="owner_follow_up_required",
+                    summary=self._open_issue_summaries[0],
+                )
             return self._stop(StopReason.SAME_BLOCKER, latest_delivery, review_dict), latest_delivery
 
         self._previous_blocker_identity = self._last_blocker_identity
@@ -353,8 +460,12 @@ class DeliveryFlowRuntime:
         plan_artifact = self._coerce_plan_artifact(plan_result)
 
         latest_delivery: DeliveryArtifact | dict[str, object] | None = None
-        for task_index, _task in enumerate(plan_artifact.tasks):
+        for task_index, task in enumerate(plan_artifact.tasks):
             self._reset_task_blockers()
+            self._pending_task_id = task.task_id
+            self._open_issue_summaries = []
+            if self.trace is not None:
+                self.trace.record_task_event(task_id=task.task_id, event="started")
             self._transition_to(ControllerState.RUNNING_DEV)
             dev_context = self._build_task_context(plan_artifact, task_index)
             latest_delivery = self.adapter.run_dev(dev_context)
@@ -369,12 +480,17 @@ class DeliveryFlowRuntime:
             )
             if terminal_result is not None:
                 return terminal_result
+            self._completed_task_ids.append(task.task_id)
+            self._pending_task_id = None
+            self._open_issue_summaries = []
+            if self.trace is not None:
+                self.trace.record_task_event(task_id=task.task_id, event="completed")
 
         if latest_delivery is None:
             raise RuntimeError("Plan artifacts require at least one task")
 
         self._transition_to(ControllerState.RUNNING_FINALIZE)
-        self.adapter.finalize(
+        finalization_result = self.adapter.finalize(
             {
                 "plan": asdict(plan_artifact),
                 "latest_delivery": asdict(latest_delivery)
@@ -382,4 +498,6 @@ class DeliveryFlowRuntime:
                 else latest_delivery,
             }
         )
-        return self._stop(StopReason.PASS, latest_delivery, {"raw_result": "approved"})
+        finalization_artifact = self._coerce_finalization_artifact(finalization_result, latest_delivery)
+        self._owner_acceptance_required = finalization_artifact.owner_acceptance_required
+        return self._stop(StopReason.PASS, finalization_artifact, {"raw_result": "approved"})

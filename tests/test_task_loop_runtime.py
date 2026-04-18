@@ -21,9 +21,16 @@ def _plan(*task_ids: str) -> PlanArtifact:
 
 
 class TaskLoopAdapter:
-    def __init__(self, plan: PlanArtifact, review_results: list[dict[str, object]]) -> None:
+    def __init__(
+        self,
+        plan: PlanArtifact,
+        review_results: list[dict[str, object]],
+        *,
+        finalize_result: dict[str, object] | None = None,
+    ) -> None:
         self.plan_artifact = plan
         self.review_results = list(review_results)
+        self.finalize_result = finalize_result
         self.dev_calls: list[str] = []
         self.review_calls: list[str] = []
         self.fix_calls: list[str] = []
@@ -62,7 +69,7 @@ class TaskLoopAdapter:
 
     def finalize(self, payload):
         self.finalize_calls += 1
-        return {"final_summary": payload}
+        return self.finalize_result or {"final_summary": payload}
 
 
 def test_runtime_advances_to_next_task_after_task_pass_without_stopping() -> None:
@@ -72,6 +79,7 @@ def test_runtime_advances_to_next_task_after_task_pass_without_stopping() -> Non
             {"raw_result": "approved"},
             {"raw_result": "approved"},
         ],
+        finalize_result={"owner_acceptance_required": False},
     )
     runtime = DeliveryFlowRuntime(
         adapter=adapter,
@@ -86,6 +94,10 @@ def test_runtime_advances_to_next_task_after_task_pass_without_stopping() -> Non
     assert adapter.review_calls == ["task-1", "task-2"]
     assert adapter.fix_calls == []
     assert adapter.finalize_calls == 1
+    assert result.completed_task_ids == ["task-1", "task-2"]
+    assert result.pending_task_id is None
+    assert result.open_issue_summaries == []
+    assert result.owner_acceptance_required is False
     assert result.stage_sequence == [
         "discussing_requirement",
         "writing_spec",
@@ -96,6 +108,16 @@ def test_runtime_advances_to_next_task_after_task_pass_without_stopping() -> Non
         "running_review",
         "running_finalize",
         "waiting_for_owner",
+    ]
+    assert "completed tasks: task-1, task-2" in result.final_summary
+    assert "open issues: none" in result.final_summary
+    assert "owner acceptance required: no" in result.final_summary
+    assert runtime.trace is not None
+    assert runtime.trace.task_events == [
+        {"task_id": "task-1", "event": "started"},
+        {"task_id": "task-1", "event": "completed"},
+        {"task_id": "task-2", "event": "started"},
+        {"task_id": "task-2", "event": "completed"},
     ]
 
 
@@ -210,3 +232,80 @@ def test_approved_review_with_strict_pass_issues_is_downgraded_to_blocker() -> N
         "failure_kind": "required_changes, testing_issues, maintainability_issues",
         "expected_resolution": "resolve strict pass review issues before continuing",
     }
+
+
+def test_runtime_surfaces_pending_task_open_issues_and_issue_actions_when_owner_input_is_required() -> None:
+    adapter = TaskLoopAdapter(
+        plan=_plan("task-1", "task-2"),
+        review_results=[
+            {"raw_result": "approved"},
+            {
+                "raw_result": "owner_input_required",
+                "findings": ["choose rollout order"],
+                "owner_decision_reason": "choose rollout order",
+            },
+        ],
+    )
+    runtime = DeliveryFlowRuntime(
+        adapter=adapter,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    result = runtime.run({"ticket": 205, "goal": "surface task loop evidence"})
+
+    assert result.stop_reason is StopReason.NEEDS_OWNER_DECISION
+    assert result.completed_task_ids == ["task-1"]
+    assert result.pending_task_id == "task-2"
+    assert result.open_issue_summaries == ["choose rollout order"]
+    assert result.owner_acceptance_required is True
+    assert "completed tasks: task-1" in result.final_summary
+    assert "open issues: choose rollout order" in result.final_summary
+    assert "owner acceptance required: yes" in result.final_summary
+    assert runtime.trace is not None
+    assert runtime.trace.task_events == [
+        {"task_id": "task-1", "event": "started"},
+        {"task_id": "task-1", "event": "completed"},
+        {"task_id": "task-2", "event": "started"},
+    ]
+    assert runtime.trace.issue_actions == [
+        {
+            "task_id": "task-2",
+            "action": "owner_decision_required",
+            "summary": "choose rollout order",
+        }
+    ]
+
+
+def test_runtime_surfaces_fallback_open_issue_summary_for_verification_unavailable() -> None:
+    adapter = TaskLoopAdapter(
+        plan=_plan("task-1", "task-2"),
+        review_results=[
+            {"raw_result": "approved"},
+            {
+                "raw_result": "changes_requested",
+                "contract_area": "runtime",
+            },
+        ],
+    )
+    runtime = DeliveryFlowRuntime(
+        adapter=adapter,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    result = runtime.run({"ticket": 206, "goal": "surface verification unavailable evidence"})
+
+    assert result.stop_reason is StopReason.VERIFICATION_UNAVAILABLE
+    assert result.completed_task_ids == ["task-1"]
+    assert result.pending_task_id == "task-2"
+    assert result.open_issue_summaries == [
+        "review blocker identity incomplete: missing failure_kind, expected_resolution"
+    ]
+    assert "open issues: review blocker identity incomplete: missing failure_kind, expected_resolution" in result.final_summary
+    assert runtime.trace is not None
+    assert runtime.trace.issue_actions == [
+        {
+            "task_id": "task-2",
+            "action": "verification_unavailable",
+            "summary": "review blocker identity incomplete: missing failure_kind, expected_resolution",
+        }
+    ]

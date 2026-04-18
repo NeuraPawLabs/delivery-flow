@@ -115,4 +115,8 @@ class RuntimeResult:
     stage_sequence: list[str] = field(default_factory=list)
     stop_reason: StopReason | None = None
     final_summary: str = ""
+    completed_task_ids: list[str] = field(default_factory=list)
+    pending_task_id: str | None = None
+    open_issue_summaries: list[str] = field(default_factory=list)
+    owner_acceptance_required: bool = True
     schema_version: ClassVar[str] = CONTRACT_SCHEMA_VERSION
