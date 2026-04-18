@@ -1,0 +1,118 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import ClassVar
+
+from delivery_flow.runtime.models import ControllerState, StopReason
+
+CONTRACT_SCHEMA_VERSION = "1.0"
+PASS_REVIEW_RESULTS = frozenset({"approved", "pass"})
+BLOCKER_REVIEW_RESULTS = frozenset({"changes_requested", "blocker"})
+OWNER_DECISION_REVIEW_RESULTS = frozenset({"owner_input_required", "needs_owner_decision"})
+KNOWN_REVIEW_RESULTS = PASS_REVIEW_RESULTS | BLOCKER_REVIEW_RESULTS | OWNER_DECISION_REVIEW_RESULTS
+
+
+@dataclass(frozen=True)
+class RequirementArtifact:
+    ticket: int
+    goal: str
+
+
+@dataclass(frozen=True)
+class PlanTaskArtifact:
+    task_id: str
+    title: str
+    goal: str
+    verification_commands: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not self.task_id:
+            raise ValueError("Plan tasks require a non-empty task_id")
+
+
+@dataclass(frozen=True)
+class PlanArtifact:
+    summary: str
+    tasks: list[PlanTaskArtifact]
+    schema_version: ClassVar[str] = CONTRACT_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        if not self.tasks:
+            raise ValueError("Plan artifacts require at least one task")
+
+
+@dataclass
+class DeliveryArtifact:
+    delivery_summary: str
+    verification_evidence: list[str] = field(default_factory=list)
+    residual_risk: list[str] = field(default_factory=list)
+    schema_version: ClassVar[str] = CONTRACT_SCHEMA_VERSION
+
+
+@dataclass(frozen=True)
+class TaskExecutionContext:
+    plan: PlanArtifact
+    task: PlanTaskArtifact
+    task_index: int
+    total_tasks: int
+    latest_delivery: DeliveryArtifact | None = None
+    latest_review: ReviewArtifact | None = None
+
+
+@dataclass
+class ReviewArtifact:
+    raw_result: str
+    findings: list[str] = field(default_factory=list)
+    verification_gaps: list[str] = field(default_factory=list)
+    required_changes: list[str] = field(default_factory=list)
+    testing_issues: list[str] = field(default_factory=list)
+    maintainability_issues: list[str] = field(default_factory=list)
+    contract_area: str = ""
+    failure_kind: str = ""
+    expected_resolution: str = ""
+    owner_decision_reason: str | None = None
+    schema_version: ClassVar[str] = CONTRACT_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        if self.raw_result not in KNOWN_REVIEW_RESULTS:
+            raise ValueError(f"Unknown raw review result: {self.raw_result}")
+
+        if self.raw_result in BLOCKER_REVIEW_RESULTS:
+            blocker_identity = (
+                self.contract_area,
+                self.failure_kind,
+                self.expected_resolution,
+            )
+            if not all(blocker_identity):
+                raise ValueError("Blocker review results require blocker identity fields")
+
+        if self.raw_result in OWNER_DECISION_REVIEW_RESULTS:
+            if not self.owner_decision_reason and not self.findings:
+                raise ValueError("Owner decision review results require owner decision context")
+
+
+@dataclass(frozen=True)
+class BlockerIdentityPayload:
+    contract_area: str
+    failure_kind: str
+    expected_resolution: str
+
+
+@dataclass
+class FinalizationArtifact:
+    delivery_summary: str
+    verification_evidence: list[str] = field(default_factory=list)
+    residual_risk: list[str] = field(default_factory=list)
+    owner_acceptance_required: bool = True
+    final_review_summary: str = ""
+    schema_version: ClassVar[str] = CONTRACT_SCHEMA_VERSION
+
+
+@dataclass
+class RuntimeResult:
+    mode: str
+    final_state: ControllerState
+    stage_sequence: list[str] = field(default_factory=list)
+    stop_reason: StopReason | None = None
+    final_summary: str = ""
+    schema_version: ClassVar[str] = CONTRACT_SCHEMA_VERSION
