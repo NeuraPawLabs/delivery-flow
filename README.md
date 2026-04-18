@@ -13,7 +13,7 @@ without handing the loop back to the owner after each stage.
 - default-use path now enters the executable stage-2 runtime
 - default-use path now runs a task-by-task runtime after planning
 - real-task runtime validation has passed
-- repository verification baseline is `uv run pytest` -> `80 passed`
+- repository verification baseline is `uv run pytest`, completes successfully, and all repository tests pass
 
 ## Highlights
 
@@ -37,7 +37,7 @@ Manual install for the current machine:
 
 ```bash
 mkdir -p ~/.codex/skills
-ln -s /home/mm/workdir/projects/delivery-flow ~/.codex/skills/delivery-flow
+ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
 ```
 
 Local skill entrypoint:
@@ -58,6 +58,8 @@ Local skill entrypoint:
   Agent-facing install instructions for Codex raw fetch flows.
 - [SKILL.md](./SKILL.md)
   Skill contract loaded by Codex.
+- [docs/skill-validation-matrix.md](./docs/skill-validation-matrix.md)
+  Compact map from validation scenarios to repo-backed tests and evidence.
 - [docs/stage-2-real-task-validation.md](./docs/stage-2-real-task-validation.md)
   Published runtime-backed validation evidence.
 
@@ -85,11 +87,11 @@ Local skill entrypoint:
 ## Verification
 
 ```bash
-cd /home/mm/workdir/projects/delivery-flow
+cd /home/mm/workdir/code/python/delivery-flow
 uv run pytest
 ```
 
-Current baseline: `80 passed`
+Expected result: `uv run pytest` completes successfully and all repository tests pass.
 
 ## Current Scope
 

@@ -1,0 +1,22 @@
+# Skill Validation Matrix
+
+This matrix keeps the validation program skill-centered and auditable by
+mapping each required validation area to concrete repository evidence.
+
+| Area | Repository evidence | Automated coverage |
+| --- | --- | --- |
+| Discovery | [`SKILL.md`](../SKILL.md), [`docs/README.codex.md`](./README.codex.md), [`docs/README.codex.zh-CN.md`](./README.codex.zh-CN.md) | [`tests/test_skill_validation_program.py`](../tests/test_skill_validation_program.py) `test_discovery_prerequisites_are_executable_locally()`; [`tests/test_docs_contract.py`](../tests/test_docs_contract.py) `test_codex_install_docs_cover_discovery_activation_and_current_baseline()` |
+| Activation | [`SKILL.md`](../SKILL.md), [`docs/README.codex.md`](./README.codex.md), [`docs/README.codex.zh-CN.md`](./README.codex.zh-CN.md) | [`tests/test_skill_validation_program.py`](../tests/test_skill_validation_program.py) `test_activation_prerequisites_align_skill_metadata_with_documented_trigger_paths()`; [`tests/test_docs_contract.py`](../tests/test_docs_contract.py) `test_codex_install_docs_cover_discovery_activation_and_current_baseline()` |
+| Compliance contract | [`SKILL.md`](../SKILL.md), [`verification-scenarios.md`](../verification-scenarios.md) | [`tests/test_docs_contract.py`](../tests/test_docs_contract.py) `test_skill_doc_describes_skill_centered_task_loop_contract()`; [`tests/test_docs_contract.py`](../tests/test_docs_contract.py) `test_verification_scenarios_cover_discovery_activation_compliance_and_parity()`; [`tests/test_skill_validation_program.py`](../tests/test_skill_validation_program.py) `test_pass_path_preserves_expected_owner_facing_contract_in_both_modes()` and `test_owner_decision_path_preserves_expected_owner_facing_contract_in_both_modes()` |
+| Fallback parity | [`superpowers-backed.md`](../superpowers-backed.md), [`fallback.md`](../fallback.md), [`verification-scenarios.md`](../verification-scenarios.md) | [`tests/test_docs_contract.py`](../tests/test_docs_contract.py) `test_backend_docs_preserve_mode_contract_and_parity_requirements()`; [`tests/test_docs_contract.py`](../tests/test_docs_contract.py) `test_verification_scenarios_cover_discovery_activation_compliance_and_parity()`; [`tests/test_skill_validation_program.py`](../tests/test_skill_validation_program.py) `test_pass_path_preserves_expected_owner_facing_contract_in_both_modes()` and `test_owner_decision_path_preserves_expected_owner_facing_contract_in_both_modes()` |
+| Same-blocker escalation | [`verification-scenarios.md`](../verification-scenarios.md) | [`tests/test_runtime_engine.py`](../tests/test_runtime_engine.py) `test_same_blocker_after_two_fix_review_cycles_stops_runtime()` and `test_runtime_supports_all_required_terminal_paths()` |
+| Verification-unavailable | [`verification-scenarios.md`](../verification-scenarios.md) | [`tests/test_runtime_engine.py`](../tests/test_runtime_engine.py) `test_missing_blocker_identity_fields_stop_as_verification_unavailable()` and `test_runtime_supports_all_required_terminal_paths()` |
+| Explicit mode | [`verification-scenarios.md`](../verification-scenarios.md) | [`tests/test_controller.py`](../tests/test_controller.py) `test_select_mode_chooses_superpowers_backed_when_capability_is_available()`, `test_select_mode_falls_back_when_superpowers_capability_is_unavailable()`, and `test_mode_banner_is_explicit_after_selection()` |
+| Continuous default-use run | [`verification-scenarios.md`](../verification-scenarios.md), [`docs/stage-2-real-task-validation.md`](./stage-2-real-task-validation.md) | [`tests/test_default_use_path.py`](../tests/test_default_use_path.py) `test_run_delivery_flow_defaults_into_runtime_and_emits_mode_banner()`, `test_default_use_path_does_not_require_owner_to_restitch_stages()`, and `test_run_delivery_flow_surfaces_task_loop_completion_fields_after_finalize()` |
+| Real-task evidence | [`docs/stage-2-real-task-validation.md`](./stage-2-real-task-validation.md) | Published real-task validation evidence. Discoverability is kept stable through [`README.md`](../README.md), [`README.zh-CN.md`](../README.zh-CN.md), and [`tests/test_docs_contract.py`](../tests/test_docs_contract.py) `test_project_readmes_highlight_task_loop_runtime_scope()`, `test_readmes_link_skill_validation_matrix()`, and `test_skill_validation_matrix_exists_and_indexes_repo_backed_evidence()` |
+
+## Maintenance rule
+
+When a validation scenario changes, update this matrix only if the evidence path
+or the validating test/doc changes. Keep the matrix as an index, not a second
+specification.

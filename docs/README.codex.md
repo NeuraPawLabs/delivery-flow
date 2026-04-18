@@ -91,16 +91,16 @@ cd ~/.codex/delivery-flow
 uv run pytest
 ```
 
-Expected baseline: `27 passed`
+Expected result: `uv run pytest` completes successfully and all repository tests pass.
 
 ## Default Runtime Path
 
 Once installed, `delivery-flow` defaults into one runtime-backed controller loop:
 
 - explicit `superpowers-backed` / `fallback` mode selection
-- runtime-owned `spec -> plan -> dev -> review -> fix -> stop`
+- runtime-owned `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
 - run trace evidence and owner-visible terminal summary
-- no owner restitching between stages
+- no owner restitching between passing tasks
 
 ## Updating
 

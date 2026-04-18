@@ -1,27 +1,29 @@
 # Superpowers-Backed Mode
 
-## Action Mapping
+Use this mode when the required `superpowers` capabilities are available.
 
-- `discuss_and_spec` -> `brainstorming`
-- `plan` -> `writing-plans`
-- `run_dev` -> implement the current planned task with `subagent-driven-development`
-- `run_review` -> review the current planned task result with `subagent-driven-development` review phases and `requesting-code-review` when needed
-- `run_fix` -> rework the current planned task after a blocker review result
-- `finalize` -> run once after all planned tasks pass successfully
+## Expected Execution Shape
 
-## Mode Contract
+- `discuss_and_spec` uses the `superpowers` requirement/spec flow
+- `plan` uses the planning flow already defined by `superpowers`
+- after planning, the main agent dispatches subagents for:
+  - `dev`
+  - `review`
+  - `fix`
+- `finalize` runs once after all planned tasks reach `pass`
 
-This backend may reuse `superpowers` capability blocks, but it may not redefine:
+## Non-Negotiable Contract
 
-- mode visibility
-- review normalization
-- stop rules
-- stop-and-wait completion behavior
-- task-by-task execution after planning
-- no backend-owned `finalize` call on early terminal stops
-- `owner_acceptance_required` reporting in `RuntimeResult` and the final summary
+This mode may reuse `superpowers` skills and subagents, but it may not redefine:
 
-Backend-native review output must be normalized by the controller into:
+- explicit mode reporting
+- task-by-task post-plan execution
+- normalized review results
+- repeated-blocker escalation
+- verification-unavailable escalation
+- terminal stop-and-wait behavior
+
+Backend-native reviewer wording is only input. The controller must normalize it into:
 
 - `pass`
 - `blocker`

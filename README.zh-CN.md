@@ -12,7 +12,7 @@
 - 默认主用路径现在会进入可执行的 stage-2 runtime
 - 默认主用路径现在会在 plan 之后按 task 逐个推进 runtime
 - real-task runtime validation 已通过
-- 当前仓库验证基线：`uv run pytest` -> `80 passed`
+- 当前仓库验证基线：`uv run pytest` 成功完成，且全部仓库测试通过
 
 ## 核心能力
 
@@ -36,7 +36,7 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 
 ```bash
 mkdir -p ~/.codex/skills
-ln -s /home/mm/workdir/projects/delivery-flow ~/.codex/skills/delivery-flow
+ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
 ```
 
 安装后的 skill 入口：
@@ -57,6 +57,8 @@ ln -s /home/mm/workdir/projects/delivery-flow ~/.codex/skills/delivery-flow
   给 agent 直接执行的安装文档。
 - [SKILL.md](./SKILL.md)
   Codex 加载时读取的 skill 合约。
+- [docs/skill-validation-matrix.md](./docs/skill-validation-matrix.md)
+  用最小矩阵把验证场景映射到仓库内测试与证据。
 - [docs/stage-2-real-task-validation.md](./docs/stage-2-real-task-validation.md)
   已发布的 runtime-backed 验证证据。
 
@@ -84,11 +86,11 @@ ln -s /home/mm/workdir/projects/delivery-flow ~/.codex/skills/delivery-flow
 ## 验证方式
 
 ```bash
-cd /home/mm/workdir/projects/delivery-flow
+cd /home/mm/workdir/code/python/delivery-flow
 uv run pytest
 ```
 
-当前基线：`80 passed`
+期望结果：`uv run pytest` 成功完成，且全部仓库测试通过。
 
 ## 当前已证明的范围
 

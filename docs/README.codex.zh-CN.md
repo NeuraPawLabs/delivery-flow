@@ -87,16 +87,16 @@ cd ~/.codex/delivery-flow
 uv run pytest
 ```
 
-当前期望基线：`27 passed`
+期望结果：`uv run pytest` 成功完成，且全部仓库测试通过。
 
 ## 默认 Runtime 路径
 
 安装完成后，`delivery-flow` 默认会进入一条 runtime-backed controller loop：
 
 - 显式选择 `superpowers-backed` / `fallback`
-- runtime 自己推进 `spec -> plan -> dev -> review -> fix -> stop`
+- runtime 自己推进 `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
 - run trace 记录证据，并生成 owner-visible terminal summary
-- owner 不需要手工把阶段重新串起来
+- owner 不需要在每个通过的 task 之间手工把阶段重新串起来
 
 ## 更新
 

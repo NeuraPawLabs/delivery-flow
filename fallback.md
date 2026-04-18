@@ -1,25 +1,25 @@
 # Fallback Mode
 
-## Action Mapping
+Use this mode only when the required `superpowers` capabilities are unavailable.
 
-- `discuss_and_spec` -> native requirement discussion and spec drafting
-- `plan` -> native plan drafting
-- `run_dev` -> implement the current planned task natively
-- `run_review` -> review the current planned task result natively
-- `run_fix` -> rework the current planned task natively after a blocker review result
-- `finalize` -> run once after all planned tasks pass successfully and emit the same owner-facing closeout contract
+Fallback exists to preserve the same owner-facing workflow contract with a weaker capability backend.
 
-## Mode Contract
+## Expected Execution Shape
 
-Fallback exists only to preserve minimum viable parity when `superpowers` is unavailable.
+- `discuss_and_spec` is performed natively
+- `plan` is performed natively
+- `dev`, `review`, and `fix` still exist after planning
+- `finalize` still runs only after all planned tasks reach `pass`
 
-It must preserve the same owner-facing workflow semantics:
+## Required Parity
 
-- explicit mode banner
-- task-by-task execution after planning
-- normalized review outputs
-- verification-unavailable stop rule
-- same-blocker two-cycle stop rule
-- no fallback-owned `finalize` call on early terminal stops
-- `owner_acceptance_required` in `RuntimeResult` and the final summary
-- final stop-and-wait behavior
+Fallback may differ internally, but it must preserve:
+
+- explicit mode reporting
+- task-by-task post-plan execution
+- normalized review results
+- repeated-blocker escalation
+- verification-unavailable escalation
+- terminal stop-and-wait behavior
+
+Fallback is not allowed to silently weaken the owner-facing contract just because the backend is weaker.
