@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from delivery_flow.contracts import RequirementArtifact, ReviewArtifact, RuntimeResult
+from delivery_flow.contracts.protocols import CapabilityDetector, ExecutionBackend
 from delivery_flow.adapters.fallback import FallbackAdapter
 from delivery_flow.adapters.superpowers import SuperpowersAdapter
 from delivery_flow.runtime.engine import DeliveryFlowRuntime
@@ -12,7 +14,7 @@ from delivery_flow.runtime.models import (
 
 
 class MainAgentLoopController:
-    def __init__(self, capability_detector: object | None = None) -> None:
+    def __init__(self, capability_detector: CapabilityDetector | None = None) -> None:
         self.capability_detector = capability_detector
         self.state = ControllerState.DISCUSSING_REQUIREMENT
         self.mode: str | None = None
@@ -32,12 +34,17 @@ class MainAgentLoopController:
         runtime = DeliveryFlowRuntime(adapter=None, capability_detector=self.capability_detector)
         return runtime.normalize_review_result(raw_result)
 
-    def derive_blocker_identity(self, review_payload: dict[str, str]) -> BlockerIdentity:
+    def derive_blocker_identity(self, review_payload: ReviewArtifact | dict[str, str]) -> BlockerIdentity:
         runtime = DeliveryFlowRuntime(adapter=None, capability_detector=self.capability_detector)
         return runtime.derive_blocker_identity(review_payload)
 
 
-def run_delivery_flow(*, payload: object, provider: object, capability_detector: object) -> object:
+def run_delivery_flow(
+    *,
+    payload: RequirementArtifact | dict[str, object],
+    provider: ExecutionBackend,
+    capability_detector: CapabilityDetector,
+) -> RuntimeResult:
     selector = MainAgentLoopController(capability_detector=capability_detector)
     mode = selector.select_mode()
     adapter = SuperpowersAdapter(provider=provider) if mode == "superpowers-backed" else FallbackAdapter(provider=provider)
