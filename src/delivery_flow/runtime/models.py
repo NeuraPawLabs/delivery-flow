@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
 
 
@@ -11,6 +11,7 @@ class ControllerState(StrEnum):
     RUNNING_DEV = "running_dev"
     RUNNING_REVIEW = "running_review"
     RUNNING_FIX = "running_fix"
+    RUNNING_FINALIZE = "running_finalize"
     WAITING_FOR_OWNER = "waiting_for_owner"
     COMPLETED = "completed"
 
@@ -33,12 +34,3 @@ class BlockerIdentity:
     contract_area: str
     failure_kind: str
     expected_resolution: str
-
-
-@dataclass
-class RuntimeResult:
-    mode: str
-    final_state: ControllerState
-    stage_sequence: list[str] = field(default_factory=list)
-    stop_reason: StopReason | None = None
-    final_summary: str = ""

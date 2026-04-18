@@ -86,6 +86,7 @@ def test_default_use_path_does_not_require_owner_to_restitch_stages() -> None:
         "planning",
         "running_dev",
         "running_review",
+        "running_finalize",
         "waiting_for_owner",
     ]
     assert "waiting for the owner's next instruction" in result.final_summary

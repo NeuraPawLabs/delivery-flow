@@ -2,6 +2,14 @@ from types import SimpleNamespace
 
 import pytest
 
+from delivery_flow.contracts import (
+    DeliveryArtifact,
+    PlanArtifact,
+    PlanTaskArtifact,
+    RequirementArtifact,
+    ReviewArtifact,
+    TaskExecutionContext,
+)
 from delivery_flow.runtime.engine import DeliveryFlowRuntime
 from delivery_flow.runtime.models import ControllerState, StopReason
 
@@ -11,7 +19,17 @@ class StubAdapter:
         return {"spec_artifact": {"ticket": payload["ticket"]}, "owner_ambiguity": None}
 
     def plan(self, payload):
-        return {"plan_artifact": {"steps": ["tdd", "verify"]}}
+        return PlanArtifact(
+            summary="runtime plan",
+            tasks=[
+                PlanTaskArtifact(
+                    task_id="task-1",
+                    title="Runtime",
+                    goal="Implement runtime task",
+                    verification_commands=["uv run pytest"],
+                )
+            ],
+        )
 
     def run_dev(self, payload):
         return {"delivery_summary": "implemented", "verification_evidence": ["pytest"], "residual_risk": []}
@@ -38,12 +56,48 @@ class ScriptedAdapter(StubAdapter):
 
     def run_fix(self, payload):
         self.fix_calls += 1
+        assert isinstance(payload, TaskExecutionContext)
         return {
             "delivery_summary": f"fix-{self.fix_calls}",
             "verification_evidence": ["pytest"],
             "residual_risk": [],
-            "source_review": payload["review"],
+            "source_review": payload.latest_review.raw_result if payload.latest_review is not None else None,
         }
+
+
+class TypedArtifactAdapter:
+    def discuss_and_spec(self, payload):
+        assert payload == {"ticket": 91, "goal": "typed-runtime"}
+        return {"spec_artifact": payload, "owner_ambiguity": None}
+
+    def plan(self, payload):
+        return PlanArtifact(
+            summary="typed runtime",
+            tasks=[
+                PlanTaskArtifact(
+                    task_id="typed-task",
+                    title="Typed runtime",
+                    goal="Run typed path",
+                    verification_commands=["uv run pytest"],
+                )
+            ],
+        )
+
+    def run_dev(self, payload):
+        return DeliveryArtifact(
+            delivery_summary="implemented typed path",
+            verification_evidence=["uv run pytest"],
+            residual_risk=[],
+        )
+
+    def run_review(self, payload):
+        return ReviewArtifact(raw_result="approved")
+
+    def run_fix(self, payload):
+        raise AssertionError("run_fix should not be called in the typed pass path")
+
+    def finalize(self, payload):
+        return {"final_summary": payload}
 
 
 def simulate_path(path_name: str):
@@ -119,6 +173,7 @@ def test_runtime_pass_path_transitions_into_waiting_for_owner() -> None:
         "planning",
         "running_dev",
         "running_review",
+        "running_finalize",
         "waiting_for_owner",
     ]
 
@@ -150,6 +205,7 @@ def test_runtime_resets_lifecycle_for_each_run() -> None:
         "planning",
         "running_dev",
         "running_review",
+        "running_finalize",
         "waiting_for_owner",
     ]
 
@@ -184,6 +240,7 @@ def test_blocker_path_enters_fix_and_then_passes() -> None:
         "running_review",
         "running_fix",
         "running_review",
+        "running_finalize",
         "waiting_for_owner",
     ]
 
@@ -289,3 +346,16 @@ def test_runtime_supports_all_required_terminal_paths() -> None:
     assert simulate_path("same_blocker_twice").stop_reason is StopReason.SAME_BLOCKER
     assert simulate_path("needs_owner_decision").stop_reason is StopReason.NEEDS_OWNER_DECISION
     assert simulate_path("verification_unavailable").stop_reason is StopReason.VERIFICATION_UNAVAILABLE
+
+
+def test_runtime_accepts_typed_requirement_and_artifact_payloads() -> None:
+    runtime = DeliveryFlowRuntime(
+        adapter=TypedArtifactAdapter(),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    result = runtime.run(RequirementArtifact(ticket=91, goal="typed-runtime"))
+
+    assert result.mode == "superpowers-backed"
+    assert result.final_state is ControllerState.WAITING_FOR_OWNER
+    assert "implemented typed path" in result.final_summary

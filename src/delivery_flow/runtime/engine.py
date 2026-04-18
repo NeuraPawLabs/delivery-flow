@@ -1,17 +1,32 @@
 from __future__ import annotations
 
+from dataclasses import asdict
+
+from delivery_flow.contracts import (
+    DeliveryArtifact,
+    PlanArtifact,
+    PlanTaskArtifact,
+    RequirementArtifact,
+    ReviewArtifact,
+    RuntimeResult,
+    TaskExecutionContext,
+)
+from delivery_flow.contracts.protocols import CapabilityDetector, ExecutionBackend
 from delivery_flow.runtime.models import (
     BlockerIdentity,
     ControllerState,
     NormalizedReviewResult,
-    RuntimeResult,
     StopReason,
 )
 from delivery_flow.trace.run_trace import RunTrace
 
 
 class DeliveryFlowRuntime:
-    def __init__(self, adapter: object | None, capability_detector: object | None) -> None:
+    def __init__(
+        self,
+        adapter: ExecutionBackend | None,
+        capability_detector: CapabilityDetector | None,
+    ) -> None:
         self.adapter = adapter
         self.capability_detector = capability_detector
         self.state = ControllerState.DISCUSSING_REQUIREMENT
@@ -20,6 +35,119 @@ class DeliveryFlowRuntime:
         self._last_blocker_identity: BlockerIdentity | None = None
         self._previous_blocker_identity: BlockerIdentity | None = None
         self.trace: RunTrace | None = None
+
+    def _coerce_plan_task(self, payload: PlanTaskArtifact | dict[str, object], index: int) -> PlanTaskArtifact:
+        if isinstance(payload, PlanTaskArtifact):
+            return payload
+
+        return PlanTaskArtifact(
+            task_id=str(payload.get("task_id") or f"task-{index + 1}"),
+            title=str(payload.get("title") or f"Task {index + 1}"),
+            goal=str(payload.get("goal") or payload.get("title") or f"Execute task-{index + 1}"),
+            verification_commands=[str(command) for command in payload.get("verification_commands", [])],
+        )
+
+    def _coerce_plan_artifact(self, payload: PlanArtifact | dict[str, object]) -> PlanArtifact:
+        if isinstance(payload, PlanArtifact):
+            return payload
+
+        source = payload.get("plan_artifact")
+        if isinstance(source, PlanArtifact):
+            return source
+        if not isinstance(source, dict):
+            source = payload
+
+        raw_tasks = source.get("tasks")
+        if isinstance(raw_tasks, list) and raw_tasks:
+            return PlanArtifact(
+                summary=str(source.get("summary", "planned work")),
+                tasks=[self._coerce_plan_task(task_payload, index) for index, task_payload in enumerate(raw_tasks)],
+            )
+
+        return PlanArtifact(
+            summary=str(source.get("summary", "planned work")),
+            tasks=[
+                PlanTaskArtifact(
+                    task_id="task-1",
+                    title="Planned task",
+                    goal=str(source.get("goal", source.get("summary", "Execute planned work"))),
+                    verification_commands=[str(command) for command in source.get("verification_commands", [])],
+                )
+            ],
+        )
+
+    def _coerce_delivery_artifact(self, payload: DeliveryArtifact | dict[str, object]) -> DeliveryArtifact:
+        if isinstance(payload, DeliveryArtifact):
+            return payload
+
+        return DeliveryArtifact(
+            delivery_summary=str(payload.get("delivery_summary", "unavailable")),
+            verification_evidence=[str(item) for item in payload.get("verification_evidence", [])],
+            residual_risk=[str(item) for item in payload.get("residual_risk", [])],
+        )
+
+    def _coerce_review_artifact(self, payload: ReviewArtifact | dict[str, object]) -> ReviewArtifact:
+        if isinstance(payload, ReviewArtifact):
+            return payload
+
+        return ReviewArtifact(
+            raw_result=str(payload["raw_result"]),
+            findings=[str(item) for item in payload.get("findings", [])],
+            verification_gaps=[str(item) for item in payload.get("verification_gaps", [])],
+            required_changes=[str(item) for item in payload.get("required_changes", [])],
+            testing_issues=[str(item) for item in payload.get("testing_issues", [])],
+            maintainability_issues=[str(item) for item in payload.get("maintainability_issues", [])],
+            contract_area=str(payload.get("contract_area", "")),
+            failure_kind=str(payload.get("failure_kind", "")),
+            expected_resolution=str(payload.get("expected_resolution", "")),
+            owner_decision_reason=(
+                str(payload["owner_decision_reason"]) if payload.get("owner_decision_reason") is not None else None
+            ),
+        )
+
+    def _build_task_context(
+        self,
+        plan: PlanArtifact,
+        task_index: int,
+        *,
+        latest_delivery: DeliveryArtifact | dict[str, object] | None = None,
+        latest_review: ReviewArtifact | dict[str, object] | None = None,
+    ) -> TaskExecutionContext:
+        return TaskExecutionContext(
+            plan=plan,
+            task=plan.tasks[task_index],
+            task_index=task_index,
+            total_tasks=len(plan.tasks),
+            latest_delivery=(
+                self._coerce_delivery_artifact(latest_delivery) if latest_delivery is not None else None
+            ),
+            latest_review=self._coerce_review_artifact(latest_review) if latest_review is not None else None,
+        )
+
+    def _reset_task_blockers(self) -> None:
+        self._last_blocker_identity = None
+        self._previous_blocker_identity = None
+
+    def _review_requires_blocker_downgrade(self, review_payload: dict[str, object]) -> bool:
+        return any(
+            review_payload.get(field)
+            for field in ("required_changes", "testing_issues", "maintainability_issues")
+        )
+
+    def _apply_strict_pass_blocker_defaults(self, review_payload: dict[str, object]) -> None:
+        review_payload.setdefault("contract_area", "review")
+        review_payload.setdefault(
+            "failure_kind",
+            ", ".join(
+                field
+                for field in ("required_changes", "testing_issues", "maintainability_issues")
+                if review_payload.get(field)
+            ),
+        )
+        review_payload.setdefault(
+            "expected_resolution",
+            "resolve strict pass review issues before continuing",
+        )
 
     def select_mode(self) -> str:
         if self.mode is not None:
@@ -52,7 +180,14 @@ class DeliveryFlowRuntime:
         except KeyError as exc:
             raise RuntimeError(f"Unknown raw review result: {raw_result}") from exc
 
-    def derive_blocker_identity(self, review_payload: dict[str, str]) -> BlockerIdentity:
+    def derive_blocker_identity(self, review_payload: ReviewArtifact | dict[str, str]) -> BlockerIdentity:
+        if isinstance(review_payload, ReviewArtifact):
+            review_payload = {
+                "contract_area": review_payload.contract_area,
+                "failure_kind": review_payload.failure_kind,
+                "expected_resolution": review_payload.expected_resolution,
+            }
+
         required_fields = (
             "contract_area",
             "failure_kind",
@@ -75,24 +210,25 @@ class DeliveryFlowRuntime:
     def _reset_run_lifecycle(self) -> None:
         self.state = ControllerState.DISCUSSING_REQUIREMENT
         self._sequence = [self.state.value]
-        self._last_blocker_identity = None
-        self._previous_blocker_identity = None
+        self._reset_task_blockers()
         self.trace = None
 
     def _stop(
         self,
         stop_reason: StopReason,
-        latest_delivery: dict[str, object],
-        review_payload: dict[str, object],
+        latest_delivery: DeliveryArtifact | dict[str, object],
+        review_payload: ReviewArtifact | dict[str, object],
     ) -> RuntimeResult:
+        delivery_payload = asdict(latest_delivery) if isinstance(latest_delivery, DeliveryArtifact) else latest_delivery
+        review_dict = asdict(review_payload) if isinstance(review_payload, ReviewArtifact) else review_payload
         self._transition_to(ControllerState.WAITING_FOR_OWNER)
         final_summary = (
             self.trace.build_terminal_summary(
-                delivery_summary=str(latest_delivery.get("delivery_summary", "unavailable")),
-                verification_evidence=list(latest_delivery.get("verification_evidence", [])),
-                residual_risk=list(latest_delivery.get("residual_risk", [])),
+                delivery_summary=str(delivery_payload.get("delivery_summary", "unavailable")),
+                verification_evidence=list(delivery_payload.get("verification_evidence", [])),
+                residual_risk=list(delivery_payload.get("residual_risk", [])),
                 stop_reason=stop_reason,
-                owner_decision_reason=review_payload.get("owner_decision_reason"),
+                owner_decision_reason=review_dict.get("owner_decision_reason"),
             )
             if self.trace is not None
             else ""
@@ -107,30 +243,36 @@ class DeliveryFlowRuntime:
 
     def _handle_review(
         self,
-        review_payload: dict[str, object],
-        latest_delivery: dict[str, object],
-    ) -> RuntimeResult:
-        normalized = self.normalize_review_result(str(review_payload["raw_result"]))
+        plan_artifact: PlanArtifact,
+        task_index: int,
+        review_payload: ReviewArtifact | dict[str, object],
+        latest_delivery: DeliveryArtifact | dict[str, object],
+    ) -> tuple[RuntimeResult | None, DeliveryArtifact | dict[str, object]]:
+        review_dict = asdict(review_payload) if isinstance(review_payload, ReviewArtifact) else dict(review_payload)
+        normalized = self.normalize_review_result(str(review_dict["raw_result"]))
+        if normalized is NormalizedReviewResult.PASS and self._review_requires_blocker_downgrade(review_dict):
+            self._apply_strict_pass_blocker_defaults(review_dict)
+            normalized = NormalizedReviewResult.BLOCKER
         blocker_identity: dict[str, str] | None = None
         if normalized is NormalizedReviewResult.PASS:
             if self.trace is not None:
                 self.trace.record_review(
-                    raw_result=str(review_payload["raw_result"]),
+                    raw_result=str(review_dict["raw_result"]),
                     normalized_result=normalized.value,
                     blocker_identity=None,
                 )
-            return self._stop(StopReason.PASS, latest_delivery, review_payload)
+            return None, latest_delivery
         if normalized is NormalizedReviewResult.NEEDS_OWNER_DECISION:
             if self.trace is not None:
                 self.trace.record_review(
-                    raw_result=str(review_payload["raw_result"]),
+                    raw_result=str(review_dict["raw_result"]),
                     normalized_result=normalized.value,
                     blocker_identity=None,
                 )
-            return self._stop(StopReason.NEEDS_OWNER_DECISION, latest_delivery, review_payload)
+            return self._stop(StopReason.NEEDS_OWNER_DECISION, latest_delivery, review_dict), latest_delivery
 
         try:
-            identity = self.derive_blocker_identity(review_payload)
+            identity = self.derive_blocker_identity(review_dict)
             blocker_identity = {
                 "contract_area": identity.contract_area,
                 "failure_kind": identity.failure_kind,
@@ -139,29 +281,36 @@ class DeliveryFlowRuntime:
         except RuntimeError:
             if self.trace is not None:
                 self.trace.record_review(
-                    raw_result=str(review_payload["raw_result"]),
+                    raw_result=str(review_dict["raw_result"]),
                     normalized_result=normalized.value,
                     blocker_identity=None,
                 )
-            return self._stop(StopReason.VERIFICATION_UNAVAILABLE, latest_delivery, review_payload)
+            return self._stop(StopReason.VERIFICATION_UNAVAILABLE, latest_delivery, review_dict), latest_delivery
 
         if self.trace is not None:
             self.trace.record_review(
-                raw_result=str(review_payload["raw_result"]),
+                raw_result=str(review_dict["raw_result"]),
                 normalized_result=normalized.value,
                 blocker_identity=blocker_identity,
             )
 
         if identity == self._last_blocker_identity == self._previous_blocker_identity:
-            return self._stop(StopReason.SAME_BLOCKER, latest_delivery, review_payload)
+            return self._stop(StopReason.SAME_BLOCKER, latest_delivery, review_dict), latest_delivery
 
         self._previous_blocker_identity = self._last_blocker_identity
         self._last_blocker_identity = identity
         self._transition_to(ControllerState.RUNNING_FIX)
-        fix_result = self.adapter.run_fix({"review": review_payload, "delivery": latest_delivery})
+        fix_context = self._build_task_context(
+            plan_artifact,
+            task_index,
+            latest_delivery=latest_delivery,
+            latest_review=review_dict,
+        )
+        fix_result = self.adapter.run_fix(fix_context)
         self._transition_to(ControllerState.RUNNING_REVIEW)
-        next_review = self.adapter.run_review(fix_result)
-        return self._handle_review(next_review, fix_result)
+        review_context = self._build_task_context(plan_artifact, task_index, latest_delivery=fix_result)
+        next_review = self.adapter.run_review(review_context)
+        return self._handle_review(plan_artifact, task_index, next_review, fix_result)
 
     def _transition_to(self, new_state: ControllerState) -> None:
         valid = {
@@ -169,8 +318,14 @@ class DeliveryFlowRuntime:
             ControllerState.WRITING_SPEC: {ControllerState.PLANNING},
             ControllerState.PLANNING: {ControllerState.RUNNING_DEV},
             ControllerState.RUNNING_DEV: {ControllerState.RUNNING_REVIEW},
-            ControllerState.RUNNING_REVIEW: {ControllerState.RUNNING_FIX, ControllerState.WAITING_FOR_OWNER},
+            ControllerState.RUNNING_REVIEW: {
+                ControllerState.RUNNING_DEV,
+                ControllerState.RUNNING_FIX,
+                ControllerState.RUNNING_FINALIZE,
+                ControllerState.WAITING_FOR_OWNER,
+            },
             ControllerState.RUNNING_FIX: {ControllerState.RUNNING_REVIEW},
+            ControllerState.RUNNING_FINALIZE: {ControllerState.WAITING_FOR_OWNER},
         }
         if new_state not in valid.get(self.state, set()):
             raise RuntimeError(f"Invalid state transition: {self.state} -> {new_state}")
@@ -182,7 +337,7 @@ class DeliveryFlowRuntime:
         if self.trace is not None:
             self.trace.record_stage_entry(new_state.value)
 
-    def run(self, payload: dict[str, object]) -> RuntimeResult:
+    def run(self, payload: RequirementArtifact | dict[str, object]) -> RuntimeResult:
         if self.adapter is None:
             raise RuntimeError("Runtime adapter is required")
 
@@ -191,11 +346,40 @@ class DeliveryFlowRuntime:
         self.trace = RunTrace(mode=self.mode or "")
         self.trace.record_stage_entry(self.state.value)
         self._transition_to(ControllerState.WRITING_SPEC)
-        spec_result = self.adapter.discuss_and_spec(payload)
+        requirement_payload = asdict(payload) if isinstance(payload, RequirementArtifact) else payload
+        spec_result = self.adapter.discuss_and_spec(requirement_payload)
         self._transition_to(ControllerState.PLANNING)
         plan_result = self.adapter.plan(spec_result)
-        self._transition_to(ControllerState.RUNNING_DEV)
-        dev_result = self.adapter.run_dev(plan_result)
-        self._transition_to(ControllerState.RUNNING_REVIEW)
-        review_result = self.adapter.run_review(dev_result)
-        return self._handle_review(review_result, dev_result)
+        plan_artifact = self._coerce_plan_artifact(plan_result)
+
+        latest_delivery: DeliveryArtifact | dict[str, object] | None = None
+        for task_index, _task in enumerate(plan_artifact.tasks):
+            self._reset_task_blockers()
+            self._transition_to(ControllerState.RUNNING_DEV)
+            dev_context = self._build_task_context(plan_artifact, task_index)
+            latest_delivery = self.adapter.run_dev(dev_context)
+            self._transition_to(ControllerState.RUNNING_REVIEW)
+            review_context = self._build_task_context(plan_artifact, task_index, latest_delivery=latest_delivery)
+            review_result = self.adapter.run_review(review_context)
+            terminal_result, latest_delivery = self._handle_review(
+                plan_artifact,
+                task_index,
+                review_result,
+                latest_delivery,
+            )
+            if terminal_result is not None:
+                return terminal_result
+
+        if latest_delivery is None:
+            raise RuntimeError("Plan artifacts require at least one task")
+
+        self._transition_to(ControllerState.RUNNING_FINALIZE)
+        self.adapter.finalize(
+            {
+                "plan": asdict(plan_artifact),
+                "latest_delivery": asdict(latest_delivery)
+                if isinstance(latest_delivery, DeliveryArtifact)
+                else latest_delivery,
+            }
+        )
+        return self._stop(StopReason.PASS, latest_delivery, {"raw_result": "approved"})
