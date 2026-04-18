@@ -16,7 +16,7 @@ The controller owns workflow semantics. Backends provide capability but do not r
 
 ## When to Use
 
-- Use when one main agent should keep `spec -> dev -> review -> fix -> stop` moving without the owner manually restarting each stage.
+- Use when one main agent should keep `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait` moving without the owner manually restarting each stage.
 - Use when you want `superpowers` to act as a preferred capability backend instead of the workflow owner.
 - Use when both `superpowers-backed` and `fallback` runs must preserve the same owner-visible contract.
 - Do not use when the workflow needs persistent task-board synchronization or multi-project coordination.
@@ -59,10 +59,11 @@ All review outcomes must be normalized into exactly one of:
 
 The controller must never consume backend-native review categories directly as workflow state.
 
-The workflow is complete only when:
+Task-loop completion semantics:
 
-1. normalized review result is `pass`
-2. the owner explicitly accepts the current state
+1. task-level `pass` completes the current task and advances to the next planned task
+2. the runtime stops with `pass` only after all planned tasks complete and `finalize` runs
+3. `owner_acceptance_required` may be `True` or `False` depending on the finalization result
 
 ## Driver Interface
 
@@ -81,12 +82,12 @@ Review normalization happens at the controller boundary.
 
 The controller must stop when:
 
-- normalized review result is `pass`
 - normalized review result is `needs_owner_decision`
 - required verification cannot be completed with available evidence
 - the same blocker survives two consecutive fix-review cycles
+- all planned tasks complete and `finalize` returns the final pass result
 
-After every terminal state, the controller must summarize delivery, summarize verification and residual risk, and explicitly say it is waiting for the owner's next instruction.
+After every terminal state, the controller must summarize delivery, summarize verification and residual risk, return `owner_acceptance_required` in `RuntimeResult` and the final summary, and explicitly say it is waiting for the owner's next instruction.
 
 ## Default Runtime Path
 
@@ -95,8 +96,11 @@ When `delivery-flow` is invoked, the main agent starts one controller-owned engi
 The runtime:
 
 - selects mode explicitly
-- drives `spec -> plan -> dev -> review -> fix -> stop`
+- drives `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
+- executes planned tasks one at a time after planning; each task may loop through review and fix before the runtime advances to the next task
+- treats task-level `pass` as "advance to the next task", not "stop the run"
 - records stage evidence in the run trace
+- records task-loop evidence including completed tasks, pending task, open issues, and the explicit `running_finalize` stage
 - emits a terminal stop-and-wait summary
 
 The owner does not need to restitch the next stage manually after each step.
@@ -115,6 +119,10 @@ The owner does not need to restitch the next stage manually after each step.
 - controller owns workflow semantics
 - mode is always explicit
 - review results normalize to `pass / blocker / needs_owner_decision`
+- post-plan execution is task-by-task, not one whole-loop `dev -> review -> fix` pass
+- task-level `pass` advances the loop; only run-level pass reaches `finalize` and stop-and-wait
 - no explicit `pass` means no completion
+- `running_finalize` occurs before `waiting_for_owner`
+- `owner_acceptance_required` may be `True` or `False` after finalize
 - terminal states end in stop-and-wait
 - default-use path enters the runtime directly

@@ -1,8 +1,8 @@
 # Delivery Flow
 
 `delivery-flow` is a Codex skill and controller contract for keeping one task
-moving through `spec -> dev -> review -> fix -> stop` without handing the loop
-back to the owner after each stage.
+plan moving through `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
+without handing the loop back to the owner after each stage.
 
 [中文文档](./README.zh-CN.md) | [Codex Guide](./docs/README.codex.md) | [Codex 中文指南](./docs/README.codex.zh-CN.md)
 
@@ -11,14 +11,18 @@ back to the owner after each stage.
 - skill entrypoint exists at `SKILL.md`
 - local skill install path is `~/.codex/skills/delivery-flow`
 - default-use path now enters the executable stage-2 runtime
+- default-use path now runs a task-by-task runtime after planning
 - real-task runtime validation has passed
-- repository verification baseline is `uv run pytest` -> `27 passed`
+- repository verification baseline is `uv run pytest` -> `80 passed`
 
 ## Highlights
 
 - explicit mode selection: `superpowers-backed` or `fallback`
 - controller-owned review normalization: `pass / blocker / needs_owner_decision`
 - controller-owned blocker identity derivation
+- task-loop evidence: completed tasks, pending task, open issues, and owner acceptance state
+- includes the explicit `running_finalize` stage before `waiting_for_owner`
+- task-level `pass` advances to the next task; only full-plan success reaches `finalize`
 - runtime-owned trace and owner-visible stop-and-wait contract after terminal states
 
 ## Quick Install For Codex
@@ -85,15 +89,19 @@ cd /home/mm/workdir/projects/delivery-flow
 uv run pytest
 ```
 
-Current baseline: `27 passed`
+Current baseline: `80 passed`
 
 ## Current Scope
 
 This repository now proves a runtime-backed owner-facing workflow loop:
 
 - the skill can be installed and discovered by Codex
-- the controller runtime executes `spec -> plan -> dev -> review -> fix -> stop`
+- the controller runtime executes `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
+- the runtime advances one planned task at a time and only starts the next task after the current task passes review
+- early terminal stops such as `needs_owner_decision` or verification-unavailable return without entering `running_finalize`
 - the default-use path enters the runtime directly
+- the final result surfaces `completed_task_ids`, `pending_task_id`, `open_issue_summaries`, and `owner_acceptance_required`
+- on full-plan success, `owner_acceptance_required` is determined by the finalization result and may be `True` or `False`
 - workflow tests cover pass, blocker recovery, repeated blocker, needs-owner-decision, and verification-unavailable paths
 - one runtime-backed validation run has been published as repository evidence
 - reviewer re-review has confirmed the runtime-backed continuous loop behavior
