@@ -88,11 +88,11 @@ class RunTrace:
     def record_issue_action(self, *, task_id: str, action: str, summary: str) -> None:
         self.issue_actions.append({"task_id": task_id, "action": action, "summary": summary})
 
-    def record_resume(self, *, task_id: str, from_stage: str, owner_response: str) -> None:
+    def record_resume(self, *, task_id: str, target_stage: str, owner_response: str) -> None:
         self.resume_events.append(
             {
                 "task_id": task_id,
-                "from_stage": from_stage,
+                "target_stage": target_stage,
                 "owner_response": owner_response,
             }
         )
@@ -134,9 +134,9 @@ class RunTrace:
         if self.resume_events:
             latest_resume = self.resume_events[-1]
             lines.append(
-                "resume: task={task_id} from={from_stage}".format(
+                "resume: task={task_id} target={target_stage}".format(
                     task_id=latest_resume["task_id"],
-                    from_stage=latest_resume["from_stage"],
+                    target_stage=latest_resume["target_stage"],
                 )
             )
         lines.append("waiting for the owner's next instruction")

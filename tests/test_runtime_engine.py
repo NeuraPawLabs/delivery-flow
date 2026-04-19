@@ -346,7 +346,7 @@ def test_runtime_resume_defaults_to_review_stage_and_threads_owner_response() ->
     assert runtime.trace.resume_events == [
         {
             "task_id": "task-1",
-            "from_stage": "running_review",
+            "target_stage": "running_review",
             "owner_response": "roll out to canary first",
         }
     ]
@@ -374,22 +374,18 @@ def test_runtime_resume_can_restart_current_task_from_dev() -> None:
                     "planning",
                     "running_dev",
                     "running_review",
-                    "running_fix",
-                    "running_review",
                     "waiting_for_owner",
                 ],
-                stop_reason=StopReason.SAME_BLOCKER,
+                stop_reason=StopReason.NEEDS_OWNER_DECISION,
                 pending_task_id="task-1",
                 resume_context=ResumeContextArtifact(
                     plan=plan,
                     task_index=0,
-                    latest_delivery=DeliveryArtifact(delivery_summary="fixed task-1"),
+                    latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
                     latest_review=ReviewArtifact(
-                        raw_result="changes_requested",
+                        raw_result="owner_input_required",
                         findings=["rerun dev with owner direction"],
-                        contract_area="runtime",
-                        failure_kind="same blocker",
-                        expected_resolution="restart dev with new direction",
+                        owner_decision_reason="rerun dev with owner direction",
                     ),
                 ),
             ),
@@ -406,8 +402,6 @@ def test_runtime_resume_can_restart_current_task_from_dev() -> None:
         "writing_spec",
         "planning",
         "running_dev",
-        "running_review",
-        "running_fix",
         "running_review",
         "waiting_for_owner",
         "running_dev",
@@ -431,6 +425,40 @@ def test_runtime_resume_rejects_result_without_resume_context() -> None:
                     final_state=ControllerState.WAITING_FOR_OWNER,
                     stop_reason=StopReason.NEEDS_OWNER_DECISION,
                     pending_task_id="task-1",
+                ),
+                owner_response="continue",
+            )
+        )
+
+
+def test_runtime_resume_rejects_non_owner_decision_stop_reason() -> None:
+    plan = PlanArtifact(
+        summary="resume runtime",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+    runtime = DeliveryFlowRuntime(
+        adapter=ResumeAdapter(review_results=[{"raw_result": "approved"}]),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    with pytest.raises(ValueError, match="needs_owner_decision"):
+        runtime.resume(
+            ResumeRequestArtifact(
+                previous_result=RuntimeResult(
+                    mode="superpowers-backed",
+                    final_state=ControllerState.WAITING_FOR_OWNER,
+                    stop_reason=StopReason.SAME_BLOCKER,
+                    pending_task_id="task-1",
+                    resume_context=ResumeContextArtifact(
+                        plan=plan,
+                        task_index=0,
+                        latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
+                        latest_review=ReviewArtifact(
+                            raw_result="owner_input_required",
+                            findings=["choose rollout order"],
+                            owner_decision_reason="choose rollout order",
+                        ),
+                    ),
                 ),
                 owner_response="continue",
             )

@@ -396,6 +396,8 @@ class DeliveryFlowRuntime:
     def _restore_resume_lifecycle(self, previous_result: RuntimeResult) -> None:
         if previous_result.final_state is not ControllerState.WAITING_FOR_OWNER:
             raise ValueError("Resume requests require a previous result waiting for owner input")
+        if previous_result.stop_reason is not StopReason.NEEDS_OWNER_DECISION:
+            raise ValueError("Resume requests require previous_result.stop_reason=needs_owner_decision")
         if previous_result.resume_context is None:
             raise ValueError("Resume requests require previous_result.resume_context")
         if previous_result.pending_task_id is None:
@@ -557,13 +559,11 @@ class DeliveryFlowRuntime:
                     action="owner_follow_up_required",
                     summary=self._open_issue_summaries[0],
                 )
-            resume_context = self._build_resume_context(plan_artifact, task_index, latest_delivery, review_dict)
             return (
                 self._stop(
                     StopReason.SAME_BLOCKER,
                     latest_delivery,
                     review_dict,
-                    resume_context=resume_context,
                 ),
                 latest_delivery,
             )
@@ -761,7 +761,7 @@ class DeliveryFlowRuntime:
         if self.trace is not None:
             self.trace.record_resume(
                 task_id=current_task.task_id,
-                from_stage=(
+                target_stage=(
                     ControllerState.RUNNING_DEV.value
                     if request.restart_current_task_from_dev
                     else ControllerState.RUNNING_REVIEW.value
