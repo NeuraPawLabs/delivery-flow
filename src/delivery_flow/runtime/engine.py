@@ -412,11 +412,14 @@ class DeliveryFlowRuntime:
             raise ValueError("Resume requests require a previous result waiting for owner input")
         if previous_result.stop_reason is not StopReason.NEEDS_OWNER_DECISION:
             raise ValueError("Resume requests require previous_result.stop_reason=needs_owner_decision")
+        if previous_result.mode not in {"superpowers-backed", "fallback"}:
+            raise ValueError("Resume requests require previous_result.mode to be a known mode")
         if previous_result.resume_context is None:
             raise ValueError("Resume requests require previous_result.resume_context")
         if previous_result.pending_task_id is None:
             raise ValueError("Resume requests require previous_result.pending_task_id")
 
+        self.mode = previous_result.mode
         self.state = previous_result.final_state
         self._sequence = list(previous_result.stage_sequence or [self.state.value])
         self._reset_task_blockers()
@@ -424,7 +427,7 @@ class DeliveryFlowRuntime:
         self._pending_task_id = previous_result.pending_task_id
         self._open_issue_summaries = list(previous_result.open_issue_summaries)
         self._owner_acceptance_required = previous_result.owner_acceptance_required
-        self.trace = RunTrace(mode=self.mode or previous_result.mode)
+        self.trace = RunTrace(mode=previous_result.mode)
         self.trace.stage_sequence = list(self._sequence)
         self.trace.stage_events = [{"stage": stage, "event": "enter"} for stage in self._sequence]
 
@@ -767,7 +770,6 @@ class DeliveryFlowRuntime:
         if resume_context is None:
             raise ValueError("Resume requests require previous_result.resume_context")
 
-        self.select_mode()
         self._restore_resume_lifecycle(previous_result)
         plan_artifact = resume_context.plan
         current_task = plan_artifact.tasks[resume_context.task_index]
