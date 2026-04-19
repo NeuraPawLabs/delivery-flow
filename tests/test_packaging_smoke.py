@@ -82,10 +82,13 @@ def test_built_wheel_exposes_public_import_surface(tmp_path: Path) -> None:
         "all": [
             "CONTRACT_SCHEMA_VERSION",
             "DeliveryArtifact",
+            "ResumeContextArtifact",
+            "ResumeRequestArtifact",
             "RequirementArtifact",
             "ReviewArtifact",
             "RuntimeResult",
             "MainAgentLoopController",
+            "resume_delivery_flow",
             "run_delivery_flow",
         ],
         "schema_version": contracts_module.CONTRACT_SCHEMA_VERSION,
