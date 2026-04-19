@@ -86,6 +86,8 @@ The existing sqlite schema remains the base model:
 - `events`
 - summary/projection tables
 
+For backend/UI consumption, event ordering must become an explicit part of the persisted model. V1 should add a stable per-run event order field such as `event_index`, assigned monotonically within each run at write time. UI and backend contracts must use that explicit field for ordering rather than relying on timestamps or sqlite insertion side effects.
+
 The key semantic change is not the schema itself but the lookup scope:
 
 - one database contains many projects
@@ -134,7 +136,7 @@ The key semantic change is not the schema itself but the lookup scope:
   - `projects`: latest run time descending
   - `projects/:project_id/runs`: run start time descending
   - `runs/:run_id/tasks`: task order ascending
-  - `runs/:run_id/events`: event sequence ascending
+  - `runs/:run_id/events`: `event_index` ascending
 - filtering should support:
   - mode
   - stop reason
