@@ -7,3 +7,4 @@ docs/local-plans/
 frontend/observability-ui/node_modules/
 frontend/observability-ui/dist/
 frontend/observability-ui/playwright-report/
+frontend/observability-ui/test-results/

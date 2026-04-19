@@ -82,6 +82,24 @@ ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
 - `tests/`
   仓库测试基线。
 
+## Observability Service
+
+- 现在所有项目都会写入同一个全局 observability 数据库
+- 写路径仍然独立，runtime 不依赖 backend 是否启动
+- backend 提供只读 observability API，并托管打包后的前端静态资源
+- React UI 位于 `frontend/observability-ui`
+- 开发时前端 dev server 和 Python backend 分开运行
+
+本地开发常用流程：
+
+```bash
+cd /home/mm/workdir/code/python/delivery-flow/frontend/observability-ui
+npm install
+npm run dev
+```
+
+开发时前后端分离，生产环境则由 Python backend 直接提供构建后的 UI。
+
 ## 验证方式
 
 ```bash

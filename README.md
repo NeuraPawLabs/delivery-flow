@@ -83,6 +83,24 @@ Local skill entrypoint:
 - `tests/`
   Repository verification baseline.
 
+## Observability Service
+
+- all projects now write to one global observability database
+- the read side stays independent: runtime writes do not depend on the backend service being up
+- the backend exposes a read-only observability API and serves packaged frontend assets
+- the React UI lives in `frontend/observability-ui`
+- during development, run the frontend dev server separately from the Python backend service
+
+Typical local workflow:
+
+```bash
+cd /home/mm/workdir/code/python/delivery-flow/frontend/observability-ui
+npm install
+npm run dev
+```
+
+The backend and frontend remain separate in development, but production serves the built UI from the Python package resources.
+
 ## Verification
 
 ```bash

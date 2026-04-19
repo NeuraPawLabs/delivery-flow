@@ -101,6 +101,7 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     readme_zh = _read("README.zh-CN.md")
 
     _assert_mentions(readme, "delivery-flow", "spec", "plan", "dev", "review", "fix")
+    _assert_mentions(readme, "observability", "global observability database", "react ui", "python backend")
     _assert_mentions(readme, "superpowers-backed", "fallback", "subagents")
     _assert_mentions(readme, "execution_strategy", "subagent-driven", "inline", "unresolved")
     _assert_mentions(
@@ -127,6 +128,7 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     )
 
     _assert_mentions(readme_zh, "delivery-flow", "spec", "plan", "dev", "review", "fix")
+    _assert_mentions(readme_zh, "observability", "全局 observability 数据库", "react ui", "python backend")
     _assert_mentions(readme_zh, "superpowers-backed", "fallback", "subagents")
     _assert_mentions(readme_zh, "execution_strategy", "subagent-driven", "inline", "unresolved")
     _assert_mentions(
