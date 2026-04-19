@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from delivery_flow.contracts import RequirementArtifact, ResumeRequestArtifact, ReviewArtifact, RuntimeResult
 from delivery_flow.contracts.protocols import CapabilityDetector, ExecutionBackend
+from delivery_flow.observability.recorder import ObservabilityRecorder
 from delivery_flow.adapters.fallback import FallbackAdapter
 from delivery_flow.adapters.superpowers import SuperpowersAdapter
 from delivery_flow.runtime.engine import DeliveryFlowRuntime
@@ -44,11 +45,12 @@ def run_delivery_flow(
     payload: RequirementArtifact | dict[str, object],
     provider: ExecutionBackend,
     capability_detector: CapabilityDetector,
+    recorder: ObservabilityRecorder | None = None,
 ) -> RuntimeResult:
     selector = MainAgentLoopController(capability_detector=capability_detector)
     mode = selector.select_mode()
     adapter = SuperpowersAdapter(provider=provider) if mode == "superpowers-backed" else FallbackAdapter(provider=provider)
-    runtime = DeliveryFlowRuntime(adapter=adapter, capability_detector=capability_detector)
+    runtime = DeliveryFlowRuntime(adapter=adapter, capability_detector=capability_detector, recorder=recorder)
     runtime.mode = mode
     return runtime.run(payload)
 
@@ -58,6 +60,7 @@ def resume_delivery_flow(
     request: ResumeRequestArtifact | dict[str, object],
     provider: ExecutionBackend,
     capability_detector: CapabilityDetector,
+    recorder: ObservabilityRecorder | None = None,
 ) -> RuntimeResult:
     probe = DeliveryFlowRuntime(adapter=None, capability_detector=capability_detector)
     resume_request = probe._coerce_resume_request(request)
@@ -65,7 +68,7 @@ def resume_delivery_flow(
     if mode not in {"superpowers-backed", "fallback"}:
         raise ValueError("Resume requests require a known previous_result.mode")
     adapter = SuperpowersAdapter(provider=provider) if mode == "superpowers-backed" else FallbackAdapter(provider=provider)
-    runtime = DeliveryFlowRuntime(adapter=adapter, capability_detector=capability_detector)
+    runtime = DeliveryFlowRuntime(adapter=adapter, capability_detector=capability_detector, recorder=recorder)
     runtime.mode = mode
     return runtime.resume(resume_request)
 
