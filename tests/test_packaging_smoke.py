@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import zipfile
 from pathlib import Path
 
 import delivery_flow.contracts as contracts_module
@@ -94,3 +95,26 @@ def test_built_wheel_exposes_public_import_surface(tmp_path: Path) -> None:
         "schema_version": contracts_module.CONTRACT_SCHEMA_VERSION,
         "has_helper": False,
     }
+
+
+def test_built_wheel_includes_packaged_observability_static_assets(tmp_path: Path) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    dist_dir = tmp_path / "dist"
+
+    _run_command(
+        "uv",
+        "build",
+        "--wheel",
+        "--out-dir",
+        str(dist_dir),
+        "--no-build-logs",
+        "--no-create-gitignore",
+        cwd=repo_root,
+    )
+
+    wheel_path = next(dist_dir.glob("delivery_flow-*.whl"))
+
+    with zipfile.ZipFile(wheel_path) as archive:
+        members = archive.namelist()
+
+    assert "delivery_flow/observability/web_dist/index.html" in members
