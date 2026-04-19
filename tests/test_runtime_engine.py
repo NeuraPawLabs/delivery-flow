@@ -7,7 +7,10 @@ from delivery_flow.contracts import (
     PlanArtifact,
     PlanTaskArtifact,
     RequirementArtifact,
+    ResumeContextArtifact,
+    ResumeRequestArtifact,
     ReviewArtifact,
+    RuntimeResult,
     TaskExecutionContext,
 )
 from delivery_flow.contracts.models import ExecutionMetadata
@@ -191,6 +194,29 @@ class NoFinalizeMetadataAdapter(StubAdapter):
         }
 
 
+class ResumeAdapter(StubAdapter):
+    def __init__(self, review_results: list[dict[str, object]]) -> None:
+        self.review_results = list(review_results)
+        self.dev_owner_responses: list[str | None] = []
+        self.review_owner_responses: list[str | None] = []
+
+    def run_dev(self, payload):
+        assert isinstance(payload, TaskExecutionContext)
+        self.dev_owner_responses.append(payload.owner_response)
+        return {
+            "delivery_summary": f"implemented {payload.task.task_id} after resume",
+            "verification_evidence": ["pytest --resume"],
+            "residual_risk": [],
+        }
+
+    def run_review(self, payload):
+        assert isinstance(payload, TaskExecutionContext)
+        self.review_owner_responses.append(payload.owner_response)
+        if not self.review_results:
+            raise AssertionError("run_review called without a scripted review payload")
+        return self.review_results.pop(0)
+
+
 def simulate_path(path_name: str):
     review_results_by_path = {
         "pass": [
@@ -258,15 +284,157 @@ def test_runtime_pass_path_transitions_into_waiting_for_owner() -> None:
 
     assert result.mode == "superpowers-backed"
     assert result.final_state is ControllerState.WAITING_FOR_OWNER
+
+
+def test_runtime_resume_defaults_to_review_stage_and_threads_owner_response() -> None:
+    plan = PlanArtifact(
+        summary="resume runtime",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+    adapter = ResumeAdapter(review_results=[{"raw_result": "approved"}])
+    runtime = DeliveryFlowRuntime(
+        adapter=adapter,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    result = runtime.resume(
+        ResumeRequestArtifact(
+            previous_result=RuntimeResult(
+                mode="superpowers-backed",
+                final_state=ControllerState.WAITING_FOR_OWNER,
+                stage_sequence=[
+                    "discussing_requirement",
+                    "writing_spec",
+                    "planning",
+                    "running_dev",
+                    "running_review",
+                    "waiting_for_owner",
+                ],
+                stop_reason=StopReason.NEEDS_OWNER_DECISION,
+                pending_task_id="task-1",
+                resume_context=ResumeContextArtifact(
+                    plan=plan,
+                    task_index=0,
+                    latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
+                    latest_review=ReviewArtifact(
+                        raw_result="owner_input_required",
+                        findings=["choose rollout order"],
+                        owner_decision_reason="choose rollout order",
+                    ),
+                ),
+            ),
+            owner_response="roll out to canary first",
+        )
+    )
+
+    assert result.stop_reason is StopReason.PASS
+    assert adapter.dev_owner_responses == []
+    assert adapter.review_owner_responses == ["roll out to canary first"]
+    assert result.completed_task_ids == ["task-1"]
     assert result.stage_sequence == [
         "discussing_requirement",
         "writing_spec",
         "planning",
         "running_dev",
         "running_review",
+        "waiting_for_owner",
+        "running_review",
         "running_finalize",
         "waiting_for_owner",
     ]
+    assert runtime.trace is not None
+    assert runtime.trace.resume_events == [
+        {
+            "task_id": "task-1",
+            "from_stage": "running_review",
+            "owner_response": "roll out to canary first",
+        }
+    ]
+
+
+def test_runtime_resume_can_restart_current_task_from_dev() -> None:
+    plan = PlanArtifact(
+        summary="resume runtime",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+    adapter = ResumeAdapter(review_results=[{"raw_result": "approved"}])
+    runtime = DeliveryFlowRuntime(
+        adapter=adapter,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    result = runtime.resume(
+        ResumeRequestArtifact(
+            previous_result=RuntimeResult(
+                mode="superpowers-backed",
+                final_state=ControllerState.WAITING_FOR_OWNER,
+                stage_sequence=[
+                    "discussing_requirement",
+                    "writing_spec",
+                    "planning",
+                    "running_dev",
+                    "running_review",
+                    "running_fix",
+                    "running_review",
+                    "waiting_for_owner",
+                ],
+                stop_reason=StopReason.SAME_BLOCKER,
+                pending_task_id="task-1",
+                resume_context=ResumeContextArtifact(
+                    plan=plan,
+                    task_index=0,
+                    latest_delivery=DeliveryArtifact(delivery_summary="fixed task-1"),
+                    latest_review=ReviewArtifact(
+                        raw_result="changes_requested",
+                        findings=["rerun dev with owner direction"],
+                        contract_area="runtime",
+                        failure_kind="same blocker",
+                        expected_resolution="restart dev with new direction",
+                    ),
+                ),
+            ),
+            owner_response="ignore old patch and restart from dev",
+            restart_current_task_from_dev=True,
+        )
+    )
+
+    assert result.stop_reason is StopReason.PASS
+    assert adapter.dev_owner_responses == ["ignore old patch and restart from dev"]
+    assert adapter.review_owner_responses == ["ignore old patch and restart from dev"]
+    assert result.stage_sequence == [
+        "discussing_requirement",
+        "writing_spec",
+        "planning",
+        "running_dev",
+        "running_review",
+        "running_fix",
+        "running_review",
+        "waiting_for_owner",
+        "running_dev",
+        "running_review",
+        "running_finalize",
+        "waiting_for_owner",
+    ]
+
+
+def test_runtime_resume_rejects_result_without_resume_context() -> None:
+    runtime = DeliveryFlowRuntime(
+        adapter=ResumeAdapter(review_results=[{"raw_result": "approved"}]),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    with pytest.raises(ValueError, match="resume_context"):
+        runtime.resume(
+            ResumeRequestArtifact(
+                previous_result=RuntimeResult(
+                    mode="superpowers-backed",
+                    final_state=ControllerState.WAITING_FOR_OWNER,
+                    stop_reason=StopReason.NEEDS_OWNER_DECISION,
+                    pending_task_id="task-1",
+                ),
+                owner_response="continue",
+            )
+        )
 
 
 def test_runtime_rejects_manual_invalid_transition() -> None:

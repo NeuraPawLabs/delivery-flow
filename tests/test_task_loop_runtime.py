@@ -1,6 +1,15 @@
 from types import SimpleNamespace
 
-from delivery_flow.contracts import PlanArtifact, PlanTaskArtifact, TaskExecutionContext
+from delivery_flow.contracts import (
+    DeliveryArtifact,
+    PlanArtifact,
+    PlanTaskArtifact,
+    ResumeContextArtifact,
+    ResumeRequestArtifact,
+    ReviewArtifact,
+    RuntimeResult,
+    TaskExecutionContext,
+)
 from delivery_flow.runtime.engine import DeliveryFlowRuntime
 from delivery_flow.runtime.models import ControllerState, StopReason
 
@@ -360,6 +369,60 @@ def test_runtime_surfaces_compact_orchestration_evidence_without_changing_task_l
             "summary": "runtime: missing transition -> re-enter review after fix",
         }
     ]
+
+
+def test_resume_continues_remaining_tasks_after_current_task_review_passes() -> None:
+    adapter = TaskLoopAdapter(
+        plan=_plan("task-1", "task-2"),
+        review_results=[
+            {"raw_result": "approved"},
+            {"raw_result": "approved"},
+        ],
+        finalize_result={"owner_acceptance_required": False},
+    )
+    runtime = DeliveryFlowRuntime(
+        adapter=adapter,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    result = runtime.resume(
+        ResumeRequestArtifact(
+            previous_result=RuntimeResult(
+                mode="superpowers-backed",
+                final_state=ControllerState.WAITING_FOR_OWNER,
+                stage_sequence=[
+                    "discussing_requirement",
+                    "writing_spec",
+                    "planning",
+                    "running_dev",
+                    "running_review",
+                    "waiting_for_owner",
+                ],
+                stop_reason=StopReason.NEEDS_OWNER_DECISION,
+                completed_task_ids=[],
+                pending_task_id="task-1",
+                resume_context=ResumeContextArtifact(
+                    plan=_plan("task-1", "task-2"),
+                    task_index=0,
+                    latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
+                    latest_review=ReviewArtifact(
+                        raw_result="owner_input_required",
+                        findings=["choose rollout order"],
+                        owner_decision_reason="choose rollout order",
+                    ),
+                ),
+            ),
+            owner_response="task-1 can proceed",
+        )
+    )
+
+    assert result.stop_reason is StopReason.PASS
+    assert adapter.dev_calls == ["task-2"]
+    assert adapter.review_calls == ["task-1", "task-2"]
+    assert adapter.fix_calls == []
+    assert result.completed_task_ids == ["task-1", "task-2"]
+    assert result.pending_task_id is None
+    assert result.owner_acceptance_required is False
 
 
 def test_runtime_surfaces_fallback_open_issue_summary_for_verification_unavailable() -> None:

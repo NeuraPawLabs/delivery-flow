@@ -14,6 +14,7 @@ class RunTrace:
     task_events: list[dict[str, str]] = field(default_factory=list)
     review_events: list[dict[str, object]] = field(default_factory=list)
     issue_actions: list[dict[str, str]] = field(default_factory=list)
+    resume_events: list[dict[str, str]] = field(default_factory=list)
     stop_reason: str | None = None
     final_summary: str = ""
 
@@ -87,6 +88,15 @@ class RunTrace:
     def record_issue_action(self, *, task_id: str, action: str, summary: str) -> None:
         self.issue_actions.append({"task_id": task_id, "action": action, "summary": summary})
 
+    def record_resume(self, *, task_id: str, from_stage: str, owner_response: str) -> None:
+        self.resume_events.append(
+            {
+                "task_id": task_id,
+                "from_stage": from_stage,
+                "owner_response": owner_response,
+            }
+        )
+
     def build_terminal_summary(
         self,
         *,
@@ -121,6 +131,14 @@ class RunTrace:
         ]
         if owner_decision_reason:
             lines.append(f"owner decision: {owner_decision_reason}")
+        if self.resume_events:
+            latest_resume = self.resume_events[-1]
+            lines.append(
+                "resume: task={task_id} from={from_stage}".format(
+                    task_id=latest_resume["task_id"],
+                    from_stage=latest_resume["from_stage"],
+                )
+            )
         lines.append("waiting for the owner's next instruction")
         self.final_summary = "\n".join(lines)
         return self.final_summary

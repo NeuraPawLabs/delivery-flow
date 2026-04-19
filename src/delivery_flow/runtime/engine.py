@@ -7,6 +7,8 @@ from delivery_flow.contracts import (
     FinalizationArtifact,
     PlanArtifact,
     PlanTaskArtifact,
+    ResumeContextArtifact,
+    ResumeRequestArtifact,
     RequirementArtifact,
     ReviewArtifact,
     RuntimeResult,
@@ -170,6 +172,75 @@ class DeliveryFlowRuntime:
             final_review_summary=str(source.get("final_review_summary", source.get("final_summary", ""))),
         )
 
+    def _coerce_controller_state(self, payload: ControllerState | str) -> ControllerState:
+        if isinstance(payload, ControllerState):
+            return payload
+        return ControllerState(str(payload))
+
+    def _coerce_stop_reason(self, payload: StopReason | str | None) -> StopReason | None:
+        if payload is None or isinstance(payload, StopReason):
+            return payload
+        return StopReason(str(payload))
+
+    def _coerce_resume_context(self, payload: ResumeContextArtifact | dict[str, object]) -> ResumeContextArtifact:
+        if isinstance(payload, ResumeContextArtifact):
+            return payload
+
+        return ResumeContextArtifact(
+            plan=self._coerce_plan_artifact(payload["plan"]),
+            task_index=int(payload["task_index"]),
+            latest_delivery=self._coerce_delivery_artifact(payload["latest_delivery"]),
+            latest_review=self._coerce_review_artifact(payload["latest_review"]),
+        )
+
+    def _coerce_runtime_result(self, payload: RuntimeResult | dict[str, object]) -> RuntimeResult:
+        if isinstance(payload, RuntimeResult):
+            return payload
+
+        resume_context_payload = payload.get("resume_context")
+        return RuntimeResult(
+            mode=str(payload.get("mode", "")),
+            final_state=self._coerce_controller_state(payload["final_state"]),
+            stage_sequence=[str(stage) for stage in payload.get("stage_sequence", [])],
+            stop_reason=self._coerce_stop_reason(payload.get("stop_reason")),
+            final_summary=str(payload.get("final_summary", "")),
+            completed_task_ids=[str(task_id) for task_id in payload.get("completed_task_ids", [])],
+            pending_task_id=(
+                str(payload["pending_task_id"]) if payload.get("pending_task_id") is not None else None
+            ),
+            open_issue_summaries=[str(item) for item in payload.get("open_issue_summaries", [])],
+            owner_acceptance_required=bool(payload.get("owner_acceptance_required", True)),
+            resume_context=(
+                self._coerce_resume_context(resume_context_payload)
+                if resume_context_payload is not None
+                else None
+            ),
+        )
+
+    def _coerce_resume_request(self, payload: ResumeRequestArtifact | dict[str, object]) -> ResumeRequestArtifact:
+        if isinstance(payload, ResumeRequestArtifact):
+            return payload
+
+        return ResumeRequestArtifact(
+            previous_result=self._coerce_runtime_result(payload["previous_result"]),
+            owner_response=str(payload["owner_response"]),
+            restart_current_task_from_dev=bool(payload.get("restart_current_task_from_dev", False)),
+        )
+
+    def _build_resume_context(
+        self,
+        plan_artifact: PlanArtifact,
+        task_index: int,
+        latest_delivery: DeliveryArtifact | dict[str, object],
+        latest_review: ReviewArtifact | dict[str, object],
+    ) -> ResumeContextArtifact:
+        return ResumeContextArtifact(
+            plan=plan_artifact,
+            task_index=task_index,
+            latest_delivery=self._coerce_delivery_artifact(latest_delivery),
+            latest_review=self._coerce_review_artifact(latest_review),
+        )
+
     def _build_task_context(
         self,
         plan: PlanArtifact,
@@ -177,6 +248,7 @@ class DeliveryFlowRuntime:
         *,
         latest_delivery: DeliveryArtifact | dict[str, object] | None = None,
         latest_review: ReviewArtifact | dict[str, object] | None = None,
+        owner_response: str | None = None,
     ) -> TaskExecutionContext:
         return TaskExecutionContext(
             plan=plan,
@@ -187,6 +259,7 @@ class DeliveryFlowRuntime:
                 self._coerce_delivery_artifact(latest_delivery) if latest_delivery is not None else None
             ),
             latest_review=self._coerce_review_artifact(latest_review) if latest_review is not None else None,
+            owner_response=owner_response,
         )
 
     def _reset_task_blockers(self) -> None:
@@ -320,11 +393,31 @@ class DeliveryFlowRuntime:
         self._owner_acceptance_required = True
         self.trace = None
 
+    def _restore_resume_lifecycle(self, previous_result: RuntimeResult) -> None:
+        if previous_result.final_state is not ControllerState.WAITING_FOR_OWNER:
+            raise ValueError("Resume requests require a previous result waiting for owner input")
+        if previous_result.resume_context is None:
+            raise ValueError("Resume requests require previous_result.resume_context")
+        if previous_result.pending_task_id is None:
+            raise ValueError("Resume requests require previous_result.pending_task_id")
+
+        self.state = previous_result.final_state
+        self._sequence = list(previous_result.stage_sequence or [self.state.value])
+        self._reset_task_blockers()
+        self._completed_task_ids = list(previous_result.completed_task_ids)
+        self._pending_task_id = previous_result.pending_task_id
+        self._open_issue_summaries = list(previous_result.open_issue_summaries)
+        self._owner_acceptance_required = previous_result.owner_acceptance_required
+        self.trace = RunTrace(mode=self.mode or previous_result.mode)
+        self.trace.stage_sequence = list(self._sequence)
+
     def _stop(
         self,
         stop_reason: StopReason,
         latest_delivery: DeliveryArtifact | FinalizationArtifact | dict[str, object],
         review_payload: ReviewArtifact | dict[str, object],
+        *,
+        resume_context: ResumeContextArtifact | None = None,
     ) -> RuntimeResult:
         delivery_payload = (
             asdict(latest_delivery)
@@ -357,6 +450,7 @@ class DeliveryFlowRuntime:
             pending_task_id=self._pending_task_id,
             open_issue_summaries=list(self._open_issue_summaries),
             owner_acceptance_required=self._owner_acceptance_required,
+            resume_context=resume_context,
         )
 
     def _handle_review(
@@ -365,6 +459,8 @@ class DeliveryFlowRuntime:
         task_index: int,
         review_payload: ReviewArtifact | dict[str, object],
         latest_delivery: DeliveryArtifact | dict[str, object],
+        *,
+        owner_response: str | None = None,
     ) -> tuple[RuntimeResult | None, DeliveryArtifact | dict[str, object]]:
         self._record_execution_metadata(review_payload)
         review_dict = asdict(review_payload) if isinstance(review_payload, ReviewArtifact) else dict(review_payload)
@@ -396,7 +492,16 @@ class DeliveryFlowRuntime:
                         action="owner_decision_required",
                         summary=self._open_issue_summaries[0],
                     )
-            return self._stop(StopReason.NEEDS_OWNER_DECISION, latest_delivery, review_dict), latest_delivery
+            resume_context = self._build_resume_context(plan_artifact, task_index, latest_delivery, review_dict)
+            return (
+                self._stop(
+                    StopReason.NEEDS_OWNER_DECISION,
+                    latest_delivery,
+                    review_dict,
+                    resume_context=resume_context,
+                ),
+                latest_delivery,
+            )
 
         try:
             identity = self.derive_blocker_identity(review_dict)
@@ -422,7 +527,14 @@ class DeliveryFlowRuntime:
                     action="verification_unavailable",
                     summary=issue_summaries[0],
                 )
-            return self._stop(StopReason.VERIFICATION_UNAVAILABLE, latest_delivery, review_dict), latest_delivery
+            return (
+                self._stop(
+                    StopReason.VERIFICATION_UNAVAILABLE,
+                    latest_delivery,
+                    review_dict,
+                ),
+                latest_delivery,
+            )
 
         issue_summary = self._summarize_blocker(blocker_identity)
         if self.trace is not None:
@@ -445,7 +557,16 @@ class DeliveryFlowRuntime:
                     action="owner_follow_up_required",
                     summary=self._open_issue_summaries[0],
                 )
-            return self._stop(StopReason.SAME_BLOCKER, latest_delivery, review_dict), latest_delivery
+            resume_context = self._build_resume_context(plan_artifact, task_index, latest_delivery, review_dict)
+            return (
+                self._stop(
+                    StopReason.SAME_BLOCKER,
+                    latest_delivery,
+                    review_dict,
+                    resume_context=resume_context,
+                ),
+                latest_delivery,
+            )
 
         self._previous_blocker_identity = self._last_blocker_identity
         self._last_blocker_identity = identity
@@ -455,13 +576,25 @@ class DeliveryFlowRuntime:
             task_index,
             latest_delivery=latest_delivery,
             latest_review=review_dict,
+            owner_response=owner_response,
         )
         fix_result = self.adapter.run_fix(fix_context)
         self._record_execution_metadata(fix_result)
         self._transition_to(ControllerState.RUNNING_REVIEW)
-        review_context = self._build_task_context(plan_artifact, task_index, latest_delivery=fix_result)
+        review_context = self._build_task_context(
+            plan_artifact,
+            task_index,
+            latest_delivery=fix_result,
+            owner_response=owner_response,
+        )
         next_review = self.adapter.run_review(review_context)
-        return self._handle_review(plan_artifact, task_index, next_review, fix_result)
+        return self._handle_review(
+            plan_artifact,
+            task_index,
+            next_review,
+            fix_result,
+            owner_response=owner_response,
+        )
 
     def _transition_to(self, new_state: ControllerState) -> None:
         valid = {
@@ -477,6 +610,10 @@ class DeliveryFlowRuntime:
             },
             ControllerState.RUNNING_FIX: {ControllerState.RUNNING_REVIEW},
             ControllerState.RUNNING_FINALIZE: {ControllerState.WAITING_FOR_OWNER},
+            ControllerState.WAITING_FOR_OWNER: {
+                ControllerState.RUNNING_DEV,
+                ControllerState.RUNNING_REVIEW,
+            },
         }
         if new_state not in valid.get(self.state, set()):
             raise RuntimeError(f"Invalid state transition: {self.state} -> {new_state}")
@@ -487,6 +624,107 @@ class DeliveryFlowRuntime:
         self._sequence.append(new_state.value)
         if self.trace is not None:
             self.trace.record_stage_entry(new_state.value)
+
+    def _finalize_current_run(
+        self,
+        plan_artifact: PlanArtifact,
+        latest_delivery: DeliveryArtifact | dict[str, object],
+    ) -> RuntimeResult:
+        self._transition_to(ControllerState.RUNNING_FINALIZE)
+        finalization_result = self.adapter.finalize(
+            {
+                "plan": asdict(plan_artifact),
+                "latest_delivery": asdict(latest_delivery)
+                if isinstance(latest_delivery, DeliveryArtifact)
+                else latest_delivery,
+            }
+        )
+        finalization_artifact = self._coerce_finalization_artifact(finalization_result, latest_delivery)
+        self._owner_acceptance_required = finalization_artifact.owner_acceptance_required
+        return self._stop(StopReason.PASS, finalization_artifact, {"raw_result": "approved"})
+
+    def _execute_plan_from_task(
+        self,
+        plan_artifact: PlanArtifact,
+        start_task_index: int,
+        *,
+        latest_delivery: DeliveryArtifact | dict[str, object] | None = None,
+        latest_review: ReviewArtifact | dict[str, object] | None = None,
+        start_with_review: bool = False,
+        owner_response: str | None = None,
+        resumed_current_task: bool = False,
+    ) -> RuntimeResult:
+        if latest_delivery is None and start_with_review:
+            raise ValueError("Review resume requires latest_delivery")
+
+        for task_index in range(start_task_index, len(plan_artifact.tasks)):
+            task = plan_artifact.tasks[task_index]
+            current_owner_response = owner_response if task_index == start_task_index else None
+            is_resumed_task = resumed_current_task and task_index == start_task_index
+            self._pending_task_id = task.task_id
+            self._open_issue_summaries = []
+            self._reset_task_blockers()
+
+            if self.trace is not None and not is_resumed_task:
+                self.trace.record_task_event(task_id=task.task_id, event="started")
+
+            if start_with_review and task_index == start_task_index:
+                self._transition_to(ControllerState.RUNNING_REVIEW)
+                review_context = self._build_task_context(
+                    plan_artifact,
+                    task_index,
+                    latest_delivery=latest_delivery,
+                    latest_review=latest_review,
+                    owner_response=current_owner_response,
+                )
+                review_result = self.adapter.run_review(review_context)
+                terminal_result, latest_delivery = self._handle_review(
+                    plan_artifact,
+                    task_index,
+                    review_result,
+                    latest_delivery,
+                    owner_response=current_owner_response,
+                )
+            else:
+                self._transition_to(ControllerState.RUNNING_DEV)
+                dev_context = self._build_task_context(
+                    plan_artifact,
+                    task_index,
+                    latest_delivery=latest_delivery if is_resumed_task else None,
+                    latest_review=latest_review if is_resumed_task else None,
+                    owner_response=current_owner_response,
+                )
+                latest_delivery = self.adapter.run_dev(dev_context)
+                self._record_execution_metadata(latest_delivery)
+                self._transition_to(ControllerState.RUNNING_REVIEW)
+                review_context = self._build_task_context(
+                    plan_artifact,
+                    task_index,
+                    latest_delivery=latest_delivery,
+                    owner_response=current_owner_response,
+                )
+                review_result = self.adapter.run_review(review_context)
+                terminal_result, latest_delivery = self._handle_review(
+                    plan_artifact,
+                    task_index,
+                    review_result,
+                    latest_delivery,
+                    owner_response=current_owner_response,
+                )
+
+            if terminal_result is not None:
+                return terminal_result
+
+            self._completed_task_ids.append(task.task_id)
+            self._pending_task_id = None
+            self._open_issue_summaries = []
+            if self.trace is not None:
+                self.trace.record_task_event(task_id=task.task_id, event="completed")
+
+        if latest_delivery is None:
+            raise RuntimeError("Plan artifacts require at least one task")
+
+        return self._finalize_current_run(plan_artifact, latest_delivery)
 
     def run(self, payload: RequirementArtifact | dict[str, object]) -> RuntimeResult:
         if self.adapter is None:
@@ -502,47 +740,41 @@ class DeliveryFlowRuntime:
         self._transition_to(ControllerState.PLANNING)
         plan_result = self.adapter.plan(spec_result)
         plan_artifact = self._coerce_plan_artifact(plan_result)
+        return self._execute_plan_from_task(plan_artifact, 0)
 
-        latest_delivery: DeliveryArtifact | dict[str, object] | None = None
-        for task_index, task in enumerate(plan_artifact.tasks):
-            self._reset_task_blockers()
-            self._pending_task_id = task.task_id
-            self._open_issue_summaries = []
-            if self.trace is not None:
-                self.trace.record_task_event(task_id=task.task_id, event="started")
-            self._transition_to(ControllerState.RUNNING_DEV)
-            dev_context = self._build_task_context(plan_artifact, task_index)
-            latest_delivery = self.adapter.run_dev(dev_context)
-            self._record_execution_metadata(latest_delivery)
-            self._transition_to(ControllerState.RUNNING_REVIEW)
-            review_context = self._build_task_context(plan_artifact, task_index, latest_delivery=latest_delivery)
-            review_result = self.adapter.run_review(review_context)
-            terminal_result, latest_delivery = self._handle_review(
-                plan_artifact,
-                task_index,
-                review_result,
-                latest_delivery,
+    def resume(self, payload: ResumeRequestArtifact | dict[str, object]) -> RuntimeResult:
+        if self.adapter is None:
+            raise RuntimeError("Runtime adapter is required")
+
+        request = self._coerce_resume_request(payload)
+        previous_result = request.previous_result
+        resume_context = previous_result.resume_context
+        if resume_context is None:
+            raise ValueError("Resume requests require previous_result.resume_context")
+
+        self.select_mode()
+        self._restore_resume_lifecycle(previous_result)
+        plan_artifact = resume_context.plan
+        current_task = plan_artifact.tasks[resume_context.task_index]
+        if previous_result.pending_task_id != current_task.task_id:
+            raise ValueError("Resume requests require pending_task_id to match resume_context.task_index")
+        if self.trace is not None:
+            self.trace.record_resume(
+                task_id=current_task.task_id,
+                from_stage=(
+                    ControllerState.RUNNING_DEV.value
+                    if request.restart_current_task_from_dev
+                    else ControllerState.RUNNING_REVIEW.value
+                ),
+                owner_response=request.owner_response,
             )
-            if terminal_result is not None:
-                return terminal_result
-            self._completed_task_ids.append(task.task_id)
-            self._pending_task_id = None
-            self._open_issue_summaries = []
-            if self.trace is not None:
-                self.trace.record_task_event(task_id=task.task_id, event="completed")
 
-        if latest_delivery is None:
-            raise RuntimeError("Plan artifacts require at least one task")
-
-        self._transition_to(ControllerState.RUNNING_FINALIZE)
-        finalization_result = self.adapter.finalize(
-            {
-                "plan": asdict(plan_artifact),
-                "latest_delivery": asdict(latest_delivery)
-                if isinstance(latest_delivery, DeliveryArtifact)
-                else latest_delivery,
-            }
+        return self._execute_plan_from_task(
+            plan_artifact,
+            resume_context.task_index,
+            latest_delivery=resume_context.latest_delivery,
+            latest_review=resume_context.latest_review,
+            start_with_review=not request.restart_current_task_from_dev,
+            owner_response=request.owner_response,
+            resumed_current_task=True,
         )
-        finalization_artifact = self._coerce_finalization_artifact(finalization_result, latest_delivery)
-        self._owner_acceptance_required = finalization_artifact.owner_acceptance_required
-        return self._stop(StopReason.PASS, finalization_artifact, {"raw_result": "approved"})

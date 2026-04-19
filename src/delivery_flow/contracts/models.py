@@ -130,6 +130,10 @@ class ResumeContextArtifact:
     latest_delivery: DeliveryArtifact
     latest_review: ReviewArtifact
 
+    def __post_init__(self) -> None:
+        if self.task_index < 0 or self.task_index >= len(self.plan.tasks):
+            raise ValueError("Resume context task_index must reference an existing plan task")
+
 
 @dataclass
 class RuntimeResult:
@@ -151,3 +155,7 @@ class ResumeRequestArtifact:
     previous_result: RuntimeResult
     owner_response: str
     restart_current_task_from_dev: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.owner_response.strip():
+            raise ValueError("Resume requests require a non-empty owner_response")

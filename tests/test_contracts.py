@@ -94,6 +94,51 @@ def test_resume_contract_models_capture_owner_follow_up_shapes() -> None:
     assert request.previous_result.resume_context == resume_context
 
 
+def test_resume_request_rejects_empty_owner_response() -> None:
+    plan = PlanArtifact(
+        summary="task loop",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+
+    with pytest.raises(ValueError, match="owner_response"):
+        ResumeRequestArtifact(
+            previous_result=RuntimeResult(
+                mode="superpowers-backed",
+                final_state=ControllerState.WAITING_FOR_OWNER,
+                stop_reason=StopReason.NEEDS_OWNER_DECISION,
+                pending_task_id="task-1",
+                resume_context=ResumeContextArtifact(
+                    plan=plan,
+                    task_index=0,
+                    latest_delivery=DeliveryArtifact(delivery_summary="implemented"),
+                    latest_review=ReviewArtifact(
+                        raw_result="owner_input_required",
+                        findings=["choose rollout order"],
+                    ),
+                ),
+            ),
+            owner_response="   ",
+        )
+
+
+def test_resume_context_rejects_task_index_outside_plan_range() -> None:
+    plan = PlanArtifact(
+        summary="task loop",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+
+    with pytest.raises(ValueError, match="task_index"):
+        ResumeContextArtifact(
+            plan=plan,
+            task_index=2,
+            latest_delivery=DeliveryArtifact(delivery_summary="implemented"),
+            latest_review=ReviewArtifact(
+                raw_result="owner_input_required",
+                findings=["choose rollout order"],
+            ),
+        )
+
+
 def test_public_contracts_expose_schema_version_markers() -> None:
     plan = PlanArtifact(
         summary="task loop",

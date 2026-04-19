@@ -25,6 +25,7 @@ from delivery_flow.runtime import (
     RuntimeResult as RuntimePackageResult,
     StopReason,
 )
+from delivery_flow.contracts import PlanArtifact, PlanTaskArtifact
 
 
 def test_top_level_package_exports_stable_public_contracts() -> None:
@@ -138,3 +139,57 @@ def test_run_delivery_flow_accepts_requirement_artifact_and_returns_public_runti
     assert result.pending_task_id is None
     assert result.open_issue_summaries == []
     assert result.owner_acceptance_required is True
+
+
+class ResumeProvider(FakeProvider):
+    def __init__(self) -> None:
+        self.review_owner_responses: list[str | None] = []
+
+    def run_review(self, payload):
+        self.review_owner_responses.append(payload.owner_response)
+        return {"raw_result": "approved", "findings": [], "verification_gaps": []}
+
+
+def test_resume_delivery_flow_exercises_runtime_backed_resume_path() -> None:
+    provider = ResumeProvider()
+    plan = PlanArtifact(
+        summary="task loop",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+
+    result = resume_delivery_flow(
+        request=ResumeRequestArtifact(
+            previous_result=RuntimeResult(
+                mode="superpowers-backed",
+                final_state=ControllerState.WAITING_FOR_OWNER,
+                stop_reason=StopReason.NEEDS_OWNER_DECISION,
+                stage_sequence=[
+                    "discussing_requirement",
+                    "writing_spec",
+                    "planning",
+                    "running_dev",
+                    "running_review",
+                    "waiting_for_owner",
+                ],
+                pending_task_id="task-1",
+                resume_context=ResumeContextArtifact(
+                    plan=plan,
+                    task_index=0,
+                    latest_delivery=DeliveryArtifact(delivery_summary="implemented"),
+                    latest_review=ReviewArtifact(
+                        raw_result="owner_input_required",
+                        findings=["choose rollout order"],
+                        owner_decision_reason="choose rollout order",
+                    ),
+                ),
+            ),
+            owner_response="ship canary first",
+        ),
+        provider=provider,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    assert isinstance(result, RuntimeResult)
+    assert result.stop_reason is StopReason.PASS
+    assert provider.review_owner_responses == ["ship canary first"]
+    assert result.completed_task_ids == ["task-1"]
