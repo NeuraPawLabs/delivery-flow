@@ -57,6 +57,10 @@ Codex 会在会话启动时扫描 `~/.codex/skills/`，读取 `SKILL.md` frontma
 
 - `superpowers-backed`
 - `fallback`
+- `plan` 之后由主 agent 持续推进执行，直到进入终止态
+- 在 `superpowers-backed` 下，plan 之后的 `dev/review/fix` 通过 subagents 执行
+- `fix` 完成后必须回到 `review`，不会在 task 边界停下
+- 严格 `pass` 会拒绝 unresolved required changes、testing issues、maintainability issues
 
 ## 使用方式
 
@@ -95,6 +99,10 @@ uv run pytest
 
 - 显式选择 `superpowers-backed` / `fallback`
 - runtime 自己推进 `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
+- `plan` 之后由主 agent 持续推进执行，直到进入终止态
+- 在 `superpowers-backed` 下，plan 之后的 `dev/review/fix` 通过 subagents 调度
+- 非终止态 `review` 不是停点：要么进入下一个 task，要么进入 `fix`；`fix` 完成后一定回到 `review`
+- 只要还存在 unresolved required changes、testing issues、maintainability issues，就不能算 `pass`
 - run trace 记录证据，并生成 owner-visible terminal summary
 - owner 不需要在每个通过的 task 之间手工把阶段重新串起来
 

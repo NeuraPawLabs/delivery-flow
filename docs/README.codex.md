@@ -60,6 +60,10 @@ modes:
 
 - `superpowers-backed`
 - `fallback`
+- after `plan`, the main agent keeps execution moving until a terminal stop
+- in `superpowers-backed`, post-plan `dev/review/fix` run via subagents
+- `fix` must be followed by `review`, with no stop/wait at task boundaries
+- strict `pass` rejects unresolved required changes, testing issues, and maintainability issues
 
 ## Usage
 
@@ -99,6 +103,10 @@ Once installed, `delivery-flow` defaults into one runtime-backed controller loop
 
 - explicit `superpowers-backed` / `fallback` mode selection
 - runtime-owned `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
+- continuous main-agent execution after planning until a terminal stop
+- `superpowers-backed` dispatches subagents for post-plan `dev/review/fix`
+- non-terminal `review` either advances to the next task or enters `fix`; `fix` always returns to `review`
+- strict `pass` rejects unresolved required changes, testing issues, and maintainability issues
 - run trace evidence and owner-visible terminal summary
 - no owner restitching between passing tasks
 

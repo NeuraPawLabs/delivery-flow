@@ -32,15 +32,20 @@ Do not use it for:
 - mode is explicit:
   - `mode=superpowers-backed`
   - `mode=fallback`
+- after planning, the main agent keeps execution moving task by task until a terminal stop
 - post-plan execution is task-by-task
-- after planning, the main agent dispatches `dev`, `review`, and `fix`
+- in `superpowers-backed`, post-plan `dev`, `review`, and `fix` run via subagents
+- in `fallback`, the same post-plan contract is preserved natively
 - review results normalize to exactly:
   - `pass`
   - `blocker`
   - `needs_owner_decision`
 - `fix` is never terminal by itself
+- `fix` must always be followed by `review`
+- no stop/wait at task boundaries or after non-terminal `review` / `fix`
 - task-level `pass` advances to the next task
 - run-level `pass` happens only after all planned tasks pass and `finalize` runs
+- `pass` stays strict: unresolved required changes, testing issues, or maintainability issues are blockers
 - terminal states always return control to the owner and wait
 
 ## Stop Rules
@@ -69,7 +74,9 @@ Silent fallback is forbidden.
 ## Quick Reference
 
 - main agent schedules
-- subagents execute post-plan work where supported
+- main agent keeps post-plan execution moving until a terminal stop
+- subagents execute post-plan work in `superpowers-backed`
+- fallback keeps the same owner-facing loop without `superpowers`
 - controller owns workflow semantics
 - no backend-native review category becomes workflow state
 - no explicit `pass` means no task closure

@@ -49,7 +49,7 @@ def test_terminal_summary_mentions_delivery_verification_task_issue_and_acceptan
     summary = trace.build_terminal_summary(
         delivery_summary="implemented runtime core",
         verification_evidence=["uv run pytest"],
-        residual_risk=["real-task validation pending"],
+        residual_risk=["broader regression coverage pending"],
         stop_reason=StopReason.NEEDS_OWNER_DECISION,
         completed_task_ids=["task-1"],
         open_issue_summaries=["choose the first real task"],
