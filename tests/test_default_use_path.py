@@ -109,6 +109,7 @@ def test_run_delivery_flow_creates_default_observability_db_when_recorder_is_not
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DELIVERY_FLOW_HOME", str(tmp_path / "global-observability"))
 
     result = run_delivery_flow(
         payload={"ticket": 90, "goal": "default-use path"},
@@ -117,7 +118,8 @@ def test_run_delivery_flow_creates_default_observability_db_when_recorder_is_not
     )
 
     assert result.stop_reason is StopReason.PASS
-    assert resolve_observability_db_path(tmp_path).is_file()
+    assert resolve_observability_db_path().is_file()
+    assert not (tmp_path / ".delivery_flow" / "observability.db").exists()
 
 
 class TaskLoopProvider:

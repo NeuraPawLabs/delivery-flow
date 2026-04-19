@@ -355,7 +355,11 @@ class ObservabilityRecorder:
                 "events": [
                     dict(row)
                     for row in conn.execute(
-                        "SELECT event_kind, task_id, loop_id, dispatch_id, payload_json FROM events ORDER BY rowid"
+                        """
+                        SELECT event_kind, event_index, task_id, loop_id, dispatch_id, payload_json
+                        FROM events
+                        ORDER BY run_id, event_index
+                        """
                     )
                 ],
             }
@@ -374,8 +378,8 @@ class ObservabilityRecorder:
         conn.execute(
             """
             INSERT INTO events (
-                event_id, run_id, task_id, loop_id, dispatch_id, event_kind, payload_json, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                event_id, run_id, task_id, loop_id, dispatch_id, event_kind, payload_json, created_at, event_index
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 uuid4().hex,
@@ -386,6 +390,10 @@ class ObservabilityRecorder:
                 event_kind,
                 json.dumps(payload, sort_keys=True),
                 _utc_now(),
+                conn.execute(
+                    "SELECT COALESCE(MAX(event_index), 0) + 1 FROM events WHERE run_id = ?",
+                    (run_id,),
+                ).fetchone()[0],
             ),
         )
 

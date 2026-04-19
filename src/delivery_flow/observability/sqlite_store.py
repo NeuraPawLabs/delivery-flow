@@ -80,6 +80,7 @@ SCHEMA_STATEMENTS = (
         event_kind TEXT NOT NULL,
         payload_json TEXT NOT NULL,
         created_at TEXT NOT NULL,
+        event_index INTEGER NOT NULL,
         FOREIGN KEY(run_id) REFERENCES runs(run_id),
         FOREIGN KEY(run_id, task_id) REFERENCES tasks(run_id, task_id),
         FOREIGN KEY(loop_id) REFERENCES task_loops(loop_id),
@@ -182,7 +183,44 @@ class SQLiteObservabilityStore:
             connection.execute("PRAGMA journal_mode = WAL")
             for statement in SCHEMA_STATEMENTS:
                 connection.execute(statement)
+            self._migrate_events_event_index(connection)
+            connection.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_events_run_id_event_index
+                ON events(run_id, event_index)
+                """
+            )
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+
+    def _migrate_events_event_index(self, connection: sqlite3.Connection) -> None:
+        event_columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(events)")
+        }
+        if "event_index" not in event_columns:
+            connection.execute("ALTER TABLE events ADD COLUMN event_index INTEGER")
+
+        rows = connection.execute(
+            """
+            SELECT rowid, run_id
+            FROM events
+            WHERE event_index IS NULL
+            ORDER BY run_id, created_at, rowid
+            """
+        ).fetchall()
+        next_indexes: dict[str, int] = {}
+        for rowid, run_id in rows:
+            event_index = next_indexes.get(run_id)
+            if event_index is None:
+                event_index = connection.execute(
+                    "SELECT COALESCE(MAX(event_index), 0) + 1 FROM events WHERE run_id = ?",
+                    (run_id,),
+                ).fetchone()[0]
+            connection.execute(
+                "UPDATE events SET event_index = ? WHERE rowid = ?",
+                (event_index, rowid),
+            )
+            next_indexes[run_id] = event_index + 1
 
     def fetch_all(self, sql: str, params: tuple[object, ...] = ()) -> list[sqlite3.Row]:
         with sqlite3.connect(self.db_path) as connection:

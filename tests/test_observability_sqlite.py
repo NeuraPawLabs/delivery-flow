@@ -42,7 +42,7 @@ def test_sqlite_store_bootstraps_expected_tables_and_user_version(tmp_path: Path
         "loop_summary",
         "task_dispatch_summary",
     }
-    assert user_version == 1
+    assert user_version == 2
 
 
 def test_project_context_uses_root_name_for_non_git_projects(tmp_path: Path) -> None:
@@ -59,6 +59,98 @@ def test_project_context_uses_root_name_for_non_git_projects(tmp_path: Path) -> 
 
 def test_default_observability_db_path_uses_delivery_flow_data_dir_and_name(tmp_path: Path) -> None:
     assert resolve_observability_db_path(tmp_path) == tmp_path / DEFAULT_DATA_DIRNAME / DEFAULT_DB_FILENAME
+
+
+def test_sqlite_store_bootstraps_events_with_explicit_run_scoped_event_index(tmp_path: Path) -> None:
+    db_path = tmp_path / "observability.sqlite3"
+
+    store = SQLiteObservabilityStore.connect(db_path)
+    store.initialize()
+
+    with sqlite3.connect(db_path) as conn:
+        events_table_info = conn.execute("PRAGMA table_info(events)").fetchall()
+        event_indexes = [row for row in events_table_info if row[1] == "event_index"]
+        event_index_unique_indexes = conn.execute("PRAGMA index_list(events)").fetchall()
+
+    assert event_indexes == [(8, "event_index", "INTEGER", 1, None, 0)]
+    assert any(row[1] == "idx_events_run_id_event_index" and row[2] for row in event_index_unique_indexes)
+
+
+def test_sqlite_store_migrates_existing_events_to_explicit_event_index(tmp_path: Path) -> None:
+    db_path = tmp_path / "observability.sqlite3"
+
+    with sqlite3.connect(db_path) as conn:
+        conn.executescript(
+            """
+            CREATE TABLE projects (
+                project_id TEXT PRIMARY KEY,
+                project_name TEXT NOT NULL,
+                project_root TEXT NOT NULL,
+                skill_name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(project_root, skill_name)
+            );
+            CREATE TABLE runs (
+                run_id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                mode TEXT NOT NULL,
+                started_at TEXT NOT NULL,
+                ended_at TEXT,
+                final_state TEXT,
+                stop_reason TEXT,
+                owner_acceptance_required INTEGER NOT NULL
+            );
+            CREATE TABLE events (
+                event_id TEXT PRIMARY KEY,
+                run_id TEXT NOT NULL,
+                task_id TEXT,
+                loop_id TEXT,
+                dispatch_id TEXT,
+                event_kind TEXT NOT NULL,
+                payload_json TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            PRAGMA user_version = 1;
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO projects (project_id, project_name, project_root, skill_name, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            ("project-1", "plain-project", str(tmp_path), "delivery-flow", "2026-04-19T00:00:00Z"),
+        )
+        conn.execute(
+            """
+            INSERT INTO runs (run_id, project_id, mode, started_at, owner_acceptance_required)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            ("run-1", "project-1", "superpowers-backed", "2026-04-19T00:00:01Z", 1),
+        )
+        conn.executemany(
+            """
+            INSERT INTO events (
+                event_id, run_id, task_id, loop_id, dispatch_id, event_kind, payload_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                ("event-1", "run-1", None, None, None, "run_started", "{}", "2026-04-19T00:00:01Z"),
+                ("event-2", "run-1", "task-1", None, None, "task_registered", "{}", "2026-04-19T00:00:02Z"),
+            ],
+        )
+
+    store = SQLiteObservabilityStore.connect(db_path)
+    store.initialize()
+
+    with sqlite3.connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT event_id, event_index FROM events WHERE run_id = ? ORDER BY event_index",
+            ("run-1",),
+        ).fetchall()
+        user_version = conn.execute("PRAGMA user_version").fetchone()[0]
+
+    assert rows == [("event-1", 1), ("event-2", 2)]
+    assert user_version == 2
 
 
 def test_sqlite_store_scopes_task_identity_to_each_run(tmp_path: Path) -> None:
@@ -267,3 +359,38 @@ def test_queries_return_run_task_loop_and_dispatch_summaries(tmp_path: Path) -> 
     assert task_summary[1]["total_loops"] == 2
     assert loop_summary[1]["final_review_result"] == "pass"
     assert dispatch_summary[1]["selected_stage"] == "running_fix"
+
+
+def test_recorder_persists_explicit_event_index_per_run(tmp_path: Path) -> None:
+    db_path = tmp_path / "observability.sqlite3"
+    store = SQLiteObservabilityStore.connect(db_path)
+    store.initialize()
+
+    run_id = seed_sample_run(store, tmp_path)
+
+    with sqlite3.connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT event_kind, event_index
+            FROM events
+            WHERE run_id = ?
+            ORDER BY event_index
+            """,
+            (run_id,),
+        ).fetchall()
+
+    assert rows == [
+        ("run_started", 1),
+        ("task_registered", 2),
+        ("task_registered", 3),
+        ("task_loop_started", 4),
+        ("task_dispatched", 5),
+        ("review_recorded", 6),
+        ("task_loop_started", 7),
+        ("task_dispatched", 8),
+        ("review_recorded", 9),
+        ("task_loop_started", 10),
+        ("task_dispatched", 11),
+        ("review_recorded", 12),
+        ("run_completed", 13),
+    ]

@@ -51,7 +51,7 @@ def _resolve_default_recorder(recorder: ObservabilityRecorder | None) -> Observa
 
     project_root = Path.cwd()
     return build_sqlite_recorder(
-        db_path=resolve_observability_db_path(project_root),
+        db_path=resolve_observability_db_path(),
         project_root=project_root,
         skill_name=_DEFAULT_SKILL_NAME,
     )
