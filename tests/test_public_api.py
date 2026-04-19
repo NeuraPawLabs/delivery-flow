@@ -9,9 +9,12 @@ from delivery_flow import (
     CONTRACT_SCHEMA_VERSION,
     DeliveryArtifact,
     MainAgentLoopController,
+    ResumeContextArtifact,
+    ResumeRequestArtifact,
     RequirementArtifact,
     ReviewArtifact,
     RuntimeResult,
+    resume_delivery_flow,
     run_delivery_flow,
 )
 from delivery_flow.runtime import (
@@ -28,18 +31,24 @@ def test_top_level_package_exports_stable_public_contracts() -> None:
     assert delivery_flow.__all__ == [
         "CONTRACT_SCHEMA_VERSION",
         "DeliveryArtifact",
+        "ResumeContextArtifact",
+        "ResumeRequestArtifact",
         "RequirementArtifact",
         "ReviewArtifact",
         "RuntimeResult",
         "MainAgentLoopController",
+        "resume_delivery_flow",
         "run_delivery_flow",
     ]
     assert callable(run_delivery_flow)
+    assert ResumeContextArtifact is contracts_module.ResumeContextArtifact
+    assert ResumeRequestArtifact is contracts_module.ResumeRequestArtifact
     assert DeliveryArtifact is contracts_module.DeliveryArtifact
     assert MainAgentLoopController is controller_module.MainAgentLoopController
     assert RequirementArtifact is contracts_module.RequirementArtifact
     assert ReviewArtifact is contracts_module.ReviewArtifact
     assert RuntimeResult is contracts_module.RuntimeResult
+    assert resume_delivery_flow is controller_module.resume_delivery_flow
     assert run_delivery_flow is controller_module.run_delivery_flow
 
 
@@ -49,6 +58,11 @@ def test_top_level_package_does_not_export_compatibility_helpers() -> None:
     assert not hasattr(delivery_flow, "build_terminal_summary_snapshot")
     assert "build_normalized_review_snapshot" not in delivery_flow.__all__
     assert "build_terminal_summary_snapshot" not in delivery_flow.__all__
+
+
+def test_top_level_package_exports_resume_entry_point() -> None:
+    assert "resume_delivery_flow" in delivery_flow.__all__
+    assert callable(resume_delivery_flow)
 
 
 def test_runtime_package_exports_stable_symbols() -> None:
@@ -70,6 +84,8 @@ def test_contracts_package_exports_task_loop_contract_symbols() -> None:
         "FinalizationArtifact",
         "PlanArtifact",
         "PlanTaskArtifact",
+        "ResumeContextArtifact",
+        "ResumeRequestArtifact",
         "RequirementArtifact",
         "ReviewArtifact",
         "RuntimeResult",

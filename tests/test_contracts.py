@@ -9,6 +9,8 @@ from delivery_flow.contracts import (
     FinalizationArtifact,
     PlanArtifact,
     PlanTaskArtifact,
+    ResumeContextArtifact,
+    ResumeRequestArtifact,
     RequirementArtifact,
     ReviewArtifact,
     RuntimeResult,
@@ -57,6 +59,39 @@ def test_contract_models_capture_runtime_shapes() -> None:
     assert blocker.contract_area == "trace"
     assert finalization.owner_acceptance_required is True
     assert result.stop_reason is StopReason.PASS
+
+
+def test_resume_contract_models_capture_owner_follow_up_shapes() -> None:
+    plan = PlanArtifact(
+        summary="task loop",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+    delivery = DeliveryArtifact(delivery_summary="implemented")
+    review = ReviewArtifact(
+        raw_result="owner_input_required",
+        findings=["choose rollout order"],
+        owner_decision_reason="choose rollout order",
+    )
+    resume_context = ResumeContextArtifact(
+        plan=plan,
+        task_index=0,
+        latest_delivery=delivery,
+        latest_review=review,
+    )
+    request = ResumeRequestArtifact(
+        previous_result=RuntimeResult(
+            mode="superpowers-backed",
+            final_state=ControllerState.WAITING_FOR_OWNER,
+            stop_reason=StopReason.NEEDS_OWNER_DECISION,
+            pending_task_id="task-1",
+            resume_context=resume_context,
+        ),
+        owner_response="roll out to canary first",
+    )
+
+    assert request.owner_response == "roll out to canary first"
+    assert request.restart_current_task_from_dev is False
+    assert request.previous_result.resume_context == resume_context
 
 
 def test_public_contracts_expose_schema_version_markers() -> None:

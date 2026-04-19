@@ -69,6 +69,7 @@ class TaskExecutionContext:
     total_tasks: int
     latest_delivery: DeliveryArtifact | None = None
     latest_review: ReviewArtifact | None = None
+    owner_response: str | None = None
 
 
 @dataclass
@@ -122,6 +123,14 @@ class FinalizationArtifact:
     schema_version: ClassVar[str] = CONTRACT_SCHEMA_VERSION
 
 
+@dataclass(frozen=True)
+class ResumeContextArtifact:
+    plan: PlanArtifact
+    task_index: int
+    latest_delivery: DeliveryArtifact
+    latest_review: ReviewArtifact
+
+
 @dataclass
 class RuntimeResult:
     mode: str
@@ -133,4 +142,12 @@ class RuntimeResult:
     pending_task_id: str | None = None
     open_issue_summaries: list[str] = field(default_factory=list)
     owner_acceptance_required: bool = True
+    resume_context: ResumeContextArtifact | None = None
     schema_version: ClassVar[str] = CONTRACT_SCHEMA_VERSION
+
+
+@dataclass(frozen=True)
+class ResumeRequestArtifact:
+    previous_result: RuntimeResult
+    owner_response: str
+    restart_current_task_from_dev: bool = False

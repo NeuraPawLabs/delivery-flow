@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from delivery_flow.contracts import RequirementArtifact, ReviewArtifact, RuntimeResult
+from delivery_flow.contracts import RequirementArtifact, ResumeRequestArtifact, ReviewArtifact, RuntimeResult
 from delivery_flow.contracts.protocols import CapabilityDetector, ExecutionBackend
 from delivery_flow.adapters.fallback import FallbackAdapter
 from delivery_flow.adapters.superpowers import SuperpowersAdapter
@@ -53,6 +53,20 @@ def run_delivery_flow(
     return runtime.run(payload)
 
 
+def resume_delivery_flow(
+    *,
+    request: ResumeRequestArtifact | dict[str, object],
+    provider: ExecutionBackend,
+    capability_detector: CapabilityDetector,
+) -> RuntimeResult:
+    selector = MainAgentLoopController(capability_detector=capability_detector)
+    mode = selector.select_mode()
+    adapter = SuperpowersAdapter(provider=provider) if mode == "superpowers-backed" else FallbackAdapter(provider=provider)
+    runtime = DeliveryFlowRuntime(adapter=adapter, capability_detector=capability_detector)
+    runtime.mode = mode
+    return runtime.resume(request)
+
+
 __all__ = [
     "BlockerIdentity",
     "ControllerState",
@@ -60,5 +74,6 @@ __all__ = [
     "MainAgentLoopController",
     "NormalizedReviewResult",
     "StopReason",
+    "resume_delivery_flow",
     "run_delivery_flow",
 ]
