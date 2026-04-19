@@ -168,9 +168,17 @@ class DeliveryFlowRuntime:
             verification_evidence=[str(item) for item in source.get("verification_evidence", latest.verification_evidence)],
             residual_risk=[str(item) for item in source.get("residual_risk", latest.residual_risk)],
             execution_metadata=self._coerce_execution_metadata(source.get("execution_metadata")),
-            owner_acceptance_required=bool(source.get("owner_acceptance_required", True)),
+            owner_acceptance_required=self._coerce_bool(
+                source.get("owner_acceptance_required", True),
+                field_name="owner_acceptance_required",
+            ),
             final_review_summary=str(source.get("final_review_summary", source.get("final_summary", ""))),
         )
+
+    def _coerce_bool(self, payload: object, *, field_name: str) -> bool:
+        if isinstance(payload, bool):
+            return payload
+        raise TypeError(f"{field_name} must be a bool")
 
     def _coerce_controller_state(self, payload: ControllerState | str) -> ControllerState:
         if isinstance(payload, ControllerState):
@@ -209,7 +217,10 @@ class DeliveryFlowRuntime:
                 str(payload["pending_task_id"]) if payload.get("pending_task_id") is not None else None
             ),
             open_issue_summaries=[str(item) for item in payload.get("open_issue_summaries", [])],
-            owner_acceptance_required=bool(payload.get("owner_acceptance_required", True)),
+            owner_acceptance_required=self._coerce_bool(
+                payload.get("owner_acceptance_required", True),
+                field_name="owner_acceptance_required",
+            ),
             resume_context=(
                 self._coerce_resume_context(resume_context_payload)
                 if resume_context_payload is not None
@@ -224,7 +235,10 @@ class DeliveryFlowRuntime:
         return ResumeRequestArtifact(
             previous_result=self._coerce_runtime_result(payload["previous_result"]),
             owner_response=str(payload["owner_response"]),
-            restart_current_task_from_dev=bool(payload.get("restart_current_task_from_dev", False)),
+            restart_current_task_from_dev=self._coerce_bool(
+                payload.get("restart_current_task_from_dev", False),
+                field_name="restart_current_task_from_dev",
+            ),
         )
 
     def _build_resume_context(
@@ -412,6 +426,7 @@ class DeliveryFlowRuntime:
         self._owner_acceptance_required = previous_result.owner_acceptance_required
         self.trace = RunTrace(mode=self.mode or previous_result.mode)
         self.trace.stage_sequence = list(self._sequence)
+        self.trace.stage_events = [{"stage": stage, "event": "enter"} for stage in self._sequence]
 
     def _stop(
         self,

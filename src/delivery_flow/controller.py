@@ -59,12 +59,15 @@ def resume_delivery_flow(
     provider: ExecutionBackend,
     capability_detector: CapabilityDetector,
 ) -> RuntimeResult:
-    selector = MainAgentLoopController(capability_detector=capability_detector)
-    mode = selector.select_mode()
+    probe = DeliveryFlowRuntime(adapter=None, capability_detector=capability_detector)
+    resume_request = probe._coerce_resume_request(request)
+    mode = resume_request.previous_result.mode
+    if mode not in {"superpowers-backed", "fallback"}:
+        raise ValueError("Resume requests require a known previous_result.mode")
     adapter = SuperpowersAdapter(provider=provider) if mode == "superpowers-backed" else FallbackAdapter(provider=provider)
     runtime = DeliveryFlowRuntime(adapter=adapter, capability_detector=capability_detector)
     runtime.mode = mode
-    return runtime.resume(request)
+    return runtime.resume(resume_request)
 
 
 __all__ = [

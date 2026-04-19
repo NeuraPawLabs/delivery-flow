@@ -5,6 +5,7 @@ import delivery_flow.controller as controller_module
 import delivery_flow.contracts as contracts_module
 import delivery_flow.runtime.engine as runtime_engine_module
 import delivery_flow.runtime.models as runtime_models_module
+import pytest
 from delivery_flow import (
     CONTRACT_SCHEMA_VERSION,
     DeliveryArtifact,
@@ -193,3 +194,87 @@ def test_resume_delivery_flow_exercises_runtime_backed_resume_path() -> None:
     assert result.stop_reason is StopReason.PASS
     assert provider.review_owner_responses == ["ship canary first"]
     assert result.completed_task_ids == ["task-1"]
+
+
+def test_resume_delivery_flow_keeps_previous_mode_when_capabilities_change() -> None:
+    provider = ResumeProvider()
+
+    result = resume_delivery_flow(
+        request={
+            "previous_result": {
+                "mode": "fallback",
+                "final_state": "waiting_for_owner",
+                "stop_reason": "needs_owner_decision",
+                "stage_sequence": [
+                    "discussing_requirement",
+                    "writing_spec",
+                    "planning",
+                    "running_dev",
+                    "running_review",
+                    "waiting_for_owner",
+                ],
+                "pending_task_id": "task-1",
+                "resume_context": {
+                    "plan": {
+                        "summary": "task loop",
+                        "tasks": [
+                            {
+                                "task_id": "task-1",
+                                "title": "Runtime",
+                                "goal": "Resume runtime",
+                            }
+                        ],
+                    },
+                    "task_index": 0,
+                    "latest_delivery": {"delivery_summary": "implemented"},
+                    "latest_review": {
+                        "raw_result": "owner_input_required",
+                        "findings": ["choose rollout order"],
+                        "owner_decision_reason": "choose rollout order",
+                    },
+                },
+            },
+            "owner_response": "ship canary first",
+        },
+        provider=provider,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    assert result.mode == "fallback"
+    assert provider.review_owner_responses == ["ship canary first"]
+
+
+def test_resume_delivery_flow_rejects_unknown_previous_mode() -> None:
+    with pytest.raises(ValueError, match="mode"):
+        resume_delivery_flow(
+            request={
+                "previous_result": {
+                    "mode": "mystery",
+                    "final_state": "waiting_for_owner",
+                    "stop_reason": "needs_owner_decision",
+                    "pending_task_id": "task-1",
+                    "resume_context": {
+                        "plan": {
+                            "summary": "task loop",
+                            "tasks": [
+                                {
+                                    "task_id": "task-1",
+                                    "title": "Runtime",
+                                    "goal": "Resume runtime",
+                                }
+                            ],
+                        },
+                        "task_index": 0,
+                        "latest_delivery": {"delivery_summary": "implemented"},
+                        "latest_review": {
+                            "raw_result": "owner_input_required",
+                            "findings": ["choose rollout order"],
+                            "owner_decision_reason": "choose rollout order",
+                        },
+                    },
+                },
+                "owner_response": "ship canary first",
+            },
+            provider=ResumeProvider(),
+            capability_detector=SimpleNamespace(has_superpowers=True),
+        )

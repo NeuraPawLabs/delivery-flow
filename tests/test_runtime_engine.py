@@ -465,6 +465,113 @@ def test_runtime_resume_rejects_non_owner_decision_stop_reason() -> None:
         )
 
 
+def test_runtime_resume_restores_stage_events_for_seeded_sequence() -> None:
+    plan = PlanArtifact(
+        summary="resume runtime",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+    runtime = DeliveryFlowRuntime(
+        adapter=ResumeAdapter(review_results=[{"raw_result": "approved"}]),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    runtime.resume(
+        ResumeRequestArtifact(
+            previous_result=RuntimeResult(
+                mode="superpowers-backed",
+                final_state=ControllerState.WAITING_FOR_OWNER,
+                stop_reason=StopReason.NEEDS_OWNER_DECISION,
+                stage_sequence=[
+                    "discussing_requirement",
+                    "writing_spec",
+                    "planning",
+                    "running_dev",
+                    "running_review",
+                    "waiting_for_owner",
+                ],
+                pending_task_id="task-1",
+                resume_context=ResumeContextArtifact(
+                    plan=plan,
+                    task_index=0,
+                    latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
+                    latest_review=ReviewArtifact(
+                        raw_result="owner_input_required",
+                        findings=["choose rollout order"],
+                        owner_decision_reason="choose rollout order",
+                    ),
+                ),
+            ),
+            owner_response="continue",
+        )
+    )
+
+    assert runtime.trace is not None
+    assert runtime.trace.stage_events[:6] == [
+        {"stage": "discussing_requirement", "event": "enter"},
+        {"stage": "writing_spec", "event": "enter"},
+        {"stage": "planning", "event": "enter"},
+        {"stage": "running_dev", "event": "enter"},
+        {"stage": "running_review", "event": "enter"},
+        {"stage": "waiting_for_owner", "event": "enter"},
+    ]
+
+
+def test_runtime_coercion_rejects_non_bool_owner_acceptance_required() -> None:
+    runtime = DeliveryFlowRuntime(
+        adapter=StubAdapter(),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    with pytest.raises(TypeError, match="owner_acceptance_required"):
+        runtime._coerce_runtime_result(
+            {
+                "mode": "superpowers-backed",
+                "final_state": "waiting_for_owner",
+                "owner_acceptance_required": "false",
+            }
+        )
+
+
+def test_runtime_coercion_rejects_non_bool_restart_flag() -> None:
+    runtime = DeliveryFlowRuntime(
+        adapter=StubAdapter(),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    with pytest.raises(TypeError, match="restart_current_task_from_dev"):
+        runtime._coerce_resume_request(
+            {
+                "previous_result": {
+                    "mode": "superpowers-backed",
+                    "final_state": "waiting_for_owner",
+                    "stop_reason": "needs_owner_decision",
+                    "pending_task_id": "task-1",
+                    "resume_context": {
+                        "plan": {
+                            "summary": "resume runtime",
+                            "tasks": [
+                                {
+                                    "task_id": "task-1",
+                                    "title": "Runtime",
+                                    "goal": "Resume runtime",
+                                }
+                            ],
+                        },
+                        "task_index": 0,
+                        "latest_delivery": {"delivery_summary": "implemented"},
+                        "latest_review": {
+                            "raw_result": "owner_input_required",
+                            "findings": ["choose rollout order"],
+                            "owner_decision_reason": "choose rollout order",
+                        },
+                    },
+                },
+                "owner_response": "continue",
+                "restart_current_task_from_dev": "false",
+            }
+        )
+
+
 def test_runtime_rejects_manual_invalid_transition() -> None:
     runtime = DeliveryFlowRuntime(
         adapter=StubAdapter(),
