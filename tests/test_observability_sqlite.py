@@ -8,6 +8,7 @@ from delivery_flow.observability.recorder import build_sqlite_recorder
 from delivery_flow.observability.config import (
     DEFAULT_DATA_DIRNAME,
     DEFAULT_DB_FILENAME,
+    DEFAULT_OBSERVABILITY_DIRNAME,
     resolve_observability_db_path,
     resolve_project_context,
 )
@@ -57,8 +58,26 @@ def test_project_context_uses_root_name_for_non_git_projects(tmp_path: Path) -> 
     assert context.branch is None
 
 
-def test_default_observability_db_path_uses_delivery_flow_data_dir_and_name(tmp_path: Path) -> None:
-    assert resolve_observability_db_path(tmp_path) == tmp_path / DEFAULT_DATA_DIRNAME / DEFAULT_DB_FILENAME
+def test_default_observability_db_path_stays_global_even_when_project_root_is_provided(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("DELIVERY_FLOW_HOME", str(tmp_path / "delivery-flow-home"))
+
+    assert resolve_observability_db_path(tmp_path) == (
+        tmp_path / "delivery-flow-home" / DEFAULT_OBSERVABILITY_DIRNAME / DEFAULT_DB_FILENAME
+    )
+
+
+def test_default_observability_db_path_uses_global_observability_subdirectory_when_project_root_is_omitted(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("DELIVERY_FLOW_HOME", str(tmp_path / "delivery-flow-home"))
+
+    assert resolve_observability_db_path() == (
+        tmp_path / "delivery-flow-home" / DEFAULT_OBSERVABILITY_DIRNAME / DEFAULT_DB_FILENAME
+    )
 
 
 def test_sqlite_store_bootstraps_events_with_explicit_run_scoped_event_index(tmp_path: Path) -> None:

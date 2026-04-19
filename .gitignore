@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 docs/local-plans/
+docs/superpowers/
 .delivery_flow/
 frontend/observability-ui/node_modules/
 frontend/observability-ui/dist/

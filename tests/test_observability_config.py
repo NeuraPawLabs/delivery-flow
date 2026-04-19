@@ -5,6 +5,7 @@ from pathlib import Path, PureWindowsPath
 from delivery_flow.observability.config import (
     DEFAULT_DATA_DIRNAME,
     DEFAULT_DB_FILENAME,
+    DEFAULT_OBSERVABILITY_DIRNAME,
     default_delivery_flow_home,
     resolve_observability_db_path,
 )
@@ -45,10 +46,17 @@ def test_default_delivery_flow_home_uses_appdata_on_windows(monkeypatch) -> None
 def test_resolve_observability_db_path_uses_global_home_by_default(monkeypatch) -> None:
     monkeypatch.setenv("DELIVERY_FLOW_HOME", "/tmp/delivery-flow-home")
 
-    assert resolve_observability_db_path() == Path("/tmp/delivery-flow-home") / DEFAULT_DB_FILENAME
+    assert resolve_observability_db_path() == (
+        Path("/tmp/delivery-flow-home") / DEFAULT_OBSERVABILITY_DIRNAME / DEFAULT_DB_FILENAME
+    )
 
 
-def test_resolve_observability_db_path_keeps_project_local_path_when_project_root_is_explicit(
+def test_resolve_observability_db_path_ignores_project_root_and_stays_global(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
-    assert resolve_observability_db_path(tmp_path) == tmp_path / DEFAULT_DATA_DIRNAME / DEFAULT_DB_FILENAME
+    monkeypatch.setenv("DELIVERY_FLOW_HOME", "/tmp/delivery-flow-home")
+
+    assert resolve_observability_db_path(tmp_path) == (
+        Path("/tmp/delivery-flow-home") / DEFAULT_OBSERVABILITY_DIRNAME / DEFAULT_DB_FILENAME
+    )

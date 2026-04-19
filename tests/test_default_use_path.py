@@ -120,6 +120,7 @@ def test_run_delivery_flow_creates_default_observability_db_when_recorder_is_not
     assert result.stop_reason is StopReason.PASS
     assert resolve_observability_db_path().is_file()
     assert not (tmp_path / ".delivery_flow" / "observability.db").exists()
+    assert (tmp_path / "global-observability" / "observability" / "observability.db").is_file()
 
 
 class TaskLoopProvider:

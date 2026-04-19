@@ -10,6 +10,7 @@ from delivery_flow.observability.models import ProjectContext
 DEFAULT_DATA_DIRNAME = ".delivery_flow"
 DEFAULT_DB_FILENAME = "observability.db"
 DEFAULT_HOME_DIRNAME = "delivery-flow"
+DEFAULT_OBSERVABILITY_DIRNAME = "observability"
 
 
 def default_delivery_flow_home() -> Path:
@@ -33,9 +34,8 @@ def resolve_observability_db_path(
     project_root: Path | None = None,
     db_name: str = DEFAULT_DB_FILENAME,
 ) -> Path:
-    if project_root is None:
-        return default_delivery_flow_home() / db_name
-    return project_root / DEFAULT_DATA_DIRNAME / db_name
+    _ = project_root
+    return default_delivery_flow_home() / DEFAULT_OBSERVABILITY_DIRNAME / db_name
 
 
 def resolve_project_context(project_root: Path, skill_name: str) -> ProjectContext:

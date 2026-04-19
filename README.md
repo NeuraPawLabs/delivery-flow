@@ -86,6 +86,8 @@ Local skill entrypoint:
 ## Observability Service
 
 - all projects now write to one global observability database
+- the default database path resolves to `DELIVERY_FLOW_HOME/observability/observability.db`
+- passing `project_root` must not fork data into a project-local observability database
 - the read side stays independent: runtime writes do not depend on the backend service being up
 - the backend exposes a read-only observability API and serves packaged frontend assets
 - the React UI lives in `frontend/observability-ui`

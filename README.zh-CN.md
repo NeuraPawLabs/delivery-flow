@@ -85,6 +85,8 @@ ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
 ## Observability Service
 
 - 现在所有项目都会写入同一个全局 observability 数据库
+- 默认数据库路径会解析为 `DELIVERY_FLOW_HOME/observability/observability.db`
+- 即使显式传入 `project_root`，也不得分叉到项目本地 observability 数据库
 - 写路径仍然独立，runtime 不依赖 backend 是否启动
 - backend 提供只读 observability API，并托管打包后的前端静态资源
 - React UI 位于 `frontend/observability-ui`
