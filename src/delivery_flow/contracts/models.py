@@ -19,6 +19,17 @@ class RequirementArtifact:
 
 
 @dataclass(frozen=True)
+class ExecutionMetadata:
+    backend: str
+    executor_kind: str
+    stage: str
+
+    def __post_init__(self) -> None:
+        if not all((self.backend, self.executor_kind, self.stage)):
+            raise ValueError("Execution metadata must be complete")
+
+
+@dataclass(frozen=True)
 class PlanTaskArtifact:
     task_id: str
     title: str
@@ -46,6 +57,7 @@ class DeliveryArtifact:
     delivery_summary: str
     verification_evidence: list[str] = field(default_factory=list)
     residual_risk: list[str] = field(default_factory=list)
+    execution_metadata: ExecutionMetadata | None = None
     schema_version: ClassVar[str] = CONTRACT_SCHEMA_VERSION
 
 
@@ -67,6 +79,7 @@ class ReviewArtifact:
     required_changes: list[str] = field(default_factory=list)
     testing_issues: list[str] = field(default_factory=list)
     maintainability_issues: list[str] = field(default_factory=list)
+    execution_metadata: ExecutionMetadata | None = None
     contract_area: str = ""
     failure_kind: str = ""
     expected_resolution: str = ""
@@ -103,6 +116,7 @@ class FinalizationArtifact:
     delivery_summary: str
     verification_evidence: list[str] = field(default_factory=list)
     residual_risk: list[str] = field(default_factory=list)
+    execution_metadata: ExecutionMetadata | None = None
     owner_acceptance_required: bool = True
     final_review_summary: str = ""
     schema_version: ClassVar[str] = CONTRACT_SCHEMA_VERSION

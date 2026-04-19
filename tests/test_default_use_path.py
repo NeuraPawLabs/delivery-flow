@@ -198,3 +198,45 @@ def test_run_delivery_flow_surfaces_pending_task_and_open_issues_when_owner_inpu
     assert "completed tasks: task-1" in result.final_summary
     assert "open issues: choose rollout order" in result.final_summary
     assert "owner acceptance required: yes" in result.final_summary
+
+
+def test_run_delivery_flow_surfaces_superpowers_execution_evidence_without_changing_owner_facing_outcome() -> None:
+    superpowers_result = run_delivery_flow(
+        payload={"ticket": 301, "goal": "orchestration evidence"},
+        provider=TaskLoopProvider(
+            review_results=[{"raw_result": "approved"}, {"raw_result": "approved"}],
+            finalize_result={"owner_acceptance_required": False},
+        ),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+    fallback_result = run_delivery_flow(
+        payload={"ticket": 301, "goal": "orchestration evidence"},
+        provider=TaskLoopProvider(
+            review_results=[{"raw_result": "approved"}, {"raw_result": "approved"}],
+            finalize_result={"owner_acceptance_required": False},
+        ),
+        capability_detector=SimpleNamespace(has_superpowers=False),
+    )
+
+    assert superpowers_result.stop_reason == fallback_result.stop_reason
+    assert superpowers_result.stage_sequence == fallback_result.stage_sequence
+    assert superpowers_result.completed_task_ids == fallback_result.completed_task_ids
+    assert superpowers_result.pending_task_id == fallback_result.pending_task_id
+    assert superpowers_result.open_issue_summaries == fallback_result.open_issue_summaries
+    assert superpowers_result.owner_acceptance_required is fallback_result.owner_acceptance_required is False
+    assert (
+        "orchestration: backend=superpowers-backed executor_kind=subagent "
+        "stages=running_dev,running_review"
+    ) in superpowers_result.final_summary
+    assert "orchestration:" not in fallback_result.final_summary
+    for summary_fragment in (
+        "completed tasks: task-1, task-2",
+        "open issues: none",
+        "owner acceptance required: no",
+        "stop reason: pass",
+    ):
+        assert summary_fragment in superpowers_result.final_summary
+        assert summary_fragment in fallback_result.final_summary
+    assert "\n".join(superpowers_result.final_summary.splitlines()[1:]) == "\n".join(
+        fallback_result.final_summary.splitlines()[1:]
+    )

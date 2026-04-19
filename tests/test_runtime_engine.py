@@ -10,6 +10,7 @@ from delivery_flow.contracts import (
     ReviewArtifact,
     TaskExecutionContext,
 )
+from delivery_flow.contracts.models import ExecutionMetadata
 from delivery_flow.runtime.engine import DeliveryFlowRuntime
 from delivery_flow.runtime.models import ControllerState, StopReason
 
@@ -98,6 +99,96 @@ class TypedArtifactAdapter:
 
     def finalize(self, payload):
         return {"final_summary": payload}
+
+
+class MetadataTracingAdapter(StubAdapter):
+    def __init__(self) -> None:
+        self.review_calls = 0
+
+    def run_dev(self, payload):
+        return {
+            "delivery_summary": "implemented with delegated execution",
+            "verification_evidence": ["pytest"],
+            "residual_risk": [],
+            "execution_metadata": {
+                "stage": "running_dev",
+                "backend": "superpowers-backed",
+                "executor_kind": "subagent",
+            },
+        }
+
+    def run_review(self, payload):
+        self.review_calls += 1
+        if self.review_calls == 1:
+            return {
+                "raw_result": "changes_requested",
+                "contract_area": "trace",
+                "failure_kind": "missing evidence",
+                "expected_resolution": "record delegated execution",
+                "execution_metadata": {
+                    "stage": "running_review",
+                    "backend": "superpowers-backed",
+                    "executor_kind": "subagent",
+                },
+            }
+        return {
+            "raw_result": "approved",
+            "execution_metadata": {
+                "stage": "running_review",
+                "backend": "superpowers-backed",
+                "executor_kind": "subagent",
+            },
+        }
+
+    def run_fix(self, payload):
+        return {
+            "delivery_summary": "fixed with delegated execution",
+            "verification_evidence": ["pytest --fix"],
+            "residual_risk": [],
+            "execution_metadata": {
+                "stage": "running_fix",
+                "backend": "superpowers-backed",
+                "executor_kind": "subagent",
+            },
+        }
+
+    def finalize(self, payload):
+        return {
+            "delivery_summary": "finalized delegated execution",
+            "verification_evidence": ["pytest --fix"],
+            "residual_risk": [],
+        }
+
+
+class NoFinalizeMetadataAdapter(StubAdapter):
+    def run_dev(self, payload):
+        return {
+            "delivery_summary": "implemented with delegated execution",
+            "verification_evidence": ["pytest"],
+            "residual_risk": [],
+            "execution_metadata": {
+                "stage": "running_dev",
+                "backend": "superpowers-backed",
+                "executor_kind": "subagent",
+            },
+        }
+
+    def run_review(self, payload):
+        return {
+            "raw_result": "approved",
+            "execution_metadata": {
+                "stage": "running_review",
+                "backend": "superpowers-backed",
+                "executor_kind": "subagent",
+            },
+        }
+
+    def finalize(self, payload):
+        return {
+            "delivery_summary": "finalized without delegated execution evidence",
+            "verification_evidence": ["pytest"],
+            "residual_risk": [],
+        }
 
 
 def simulate_path(path_name: str):
@@ -208,6 +299,62 @@ def test_runtime_resets_lifecycle_for_each_run() -> None:
         "running_finalize",
         "waiting_for_owner",
     ]
+
+
+def test_runtime_coercion_preserves_dict_backed_execution_metadata() -> None:
+    runtime = DeliveryFlowRuntime(
+        adapter=StubAdapter(),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    delivery = runtime._coerce_delivery_artifact(
+        {
+            "delivery_summary": "implemented",
+            "verification_evidence": ["pytest"],
+            "residual_risk": [],
+            "execution_metadata": {
+                "stage": "running_dev",
+                "backend": "superpowers-backed",
+                "executor_kind": "subagent",
+            },
+        }
+    )
+    review = runtime._coerce_review_artifact(
+        {
+            "raw_result": "approved",
+            "execution_metadata": {
+                "stage": "running_review",
+                "backend": "superpowers-backed",
+                "executor_kind": "subagent",
+            },
+        }
+    )
+    finalization = runtime._coerce_finalization_artifact(
+        {
+            "delivery_summary": "implemented",
+        },
+        delivery,
+    )
+
+    assert delivery == DeliveryArtifact(
+        delivery_summary="implemented",
+        verification_evidence=["pytest"],
+        residual_risk=[],
+        execution_metadata=ExecutionMetadata(
+            stage="running_dev",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+    )
+    assert review == ReviewArtifact(
+        raw_result="approved",
+        execution_metadata=ExecutionMetadata(
+            stage="running_review",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+    )
+    assert finalization.execution_metadata is None
 
 
 def test_blocker_path_enters_fix_and_then_passes() -> None:
@@ -338,6 +485,110 @@ def test_runtime_trace_captures_stage_exits_and_final_summary() -> None:
     assert runtime.trace.final_summary == result.final_summary
     assert {"stage": "running_review", "event": "exit"} in runtime.trace.stage_events
     assert {"stage": "waiting_for_owner", "event": "enter"} in runtime.trace.stage_events
+
+
+def test_runtime_run_records_execution_metadata_into_trace_when_present() -> None:
+    runtime = DeliveryFlowRuntime(
+        adapter=MetadataTracingAdapter(),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    runtime.run({"ticket": 89, "goal": "trace execution metadata"})
+
+    assert runtime.trace is not None
+    assert runtime.trace.execution_events == [
+        ExecutionMetadata(
+            stage="running_dev",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+        ExecutionMetadata(
+            stage="running_review",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+        ExecutionMetadata(
+            stage="running_fix",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+        ExecutionMetadata(
+            stage="running_review",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+    ]
+
+
+def test_runtime_run_surfaces_orchestration_evidence_in_final_summary_when_present() -> None:
+    runtime = DeliveryFlowRuntime(
+        adapter=MetadataTracingAdapter(),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    result = runtime.run({"ticket": 91, "goal": "summary execution metadata"})
+
+    assert (
+        "orchestration: backend=superpowers-backed executor_kind=subagent "
+        "stages=running_dev,running_review,running_fix"
+    ) in result.final_summary
+    assert "running_finalize" not in result.final_summary
+
+
+def test_runtime_run_does_not_fabricate_finalize_execution_metadata() -> None:
+    runtime = DeliveryFlowRuntime(
+        adapter=NoFinalizeMetadataAdapter(),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    runtime.run({"ticket": 90, "goal": "no fabricated finalize metadata"})
+
+    assert runtime.trace is not None
+    assert runtime.trace.execution_events == [
+        ExecutionMetadata(
+            stage="running_dev",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+        ExecutionMetadata(
+            stage="running_review",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+    ]
+
+
+def test_runtime_run_ignores_finalize_execution_metadata_when_provider_supplies_it() -> None:
+    runtime = DeliveryFlowRuntime(
+        adapter=MetadataTracingAdapter(),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    runtime.run({"ticket": 90, "goal": "ignore finalize execution metadata"})
+
+    assert runtime.trace is not None
+    assert runtime.trace.execution_events == [
+        ExecutionMetadata(
+            stage="running_dev",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+        ExecutionMetadata(
+            stage="running_review",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+        ExecutionMetadata(
+            stage="running_fix",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+        ExecutionMetadata(
+            stage="running_review",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+    ]
 
 
 def test_runtime_supports_all_required_terminal_paths() -> None:

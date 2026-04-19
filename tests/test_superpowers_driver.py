@@ -30,6 +30,20 @@ class FakeSuperpowersProvider:
         return {"final": payload}
 
 
+class PreservingSuperpowersProvider(FakeSuperpowersProvider):
+    def run_review(self, payload: object) -> dict[str, object]:
+        self.calls.append(("run_review", payload))
+        return {
+            "raw_result": "approved",
+            "payload": payload,
+            "execution_metadata": {
+                "backend": "superpowers-backed",
+                "executor_kind": "subagent",
+                "stage": "running_review",
+            },
+        }
+
+
 def test_superpowers_driver_exposes_the_full_minimal_action_surface() -> None:
     driver = SuperpowersBackedDriver(provider=FakeSuperpowersProvider())
 
@@ -54,10 +68,11 @@ def test_superpowers_driver_delegates_calls_to_provider() -> None:
 
     assert spec == {"spec": {"ticket": 1}}
     assert plan == {"plan": {"spec": "ok"}}
-    assert delivery == {"delivery": {"task": "build"}}
-    assert review == {"raw_result": "approved", "payload": {"diff": "..."}}
-    assert fix == {"fix": {"finding": "x"}}
-    assert final == {"final": {"summary": "done"}}
+    assert delivery["delivery"] == {"task": "build"}
+    assert review["raw_result"] == "approved"
+    assert review["payload"] == {"diff": "..."}
+    assert fix["fix"] == {"finding": "x"}
+    assert final["final"] == {"summary": "done"}
     assert provider.calls == [
         ("discuss_and_spec", {"ticket": 1}),
         ("plan", {"spec": "ok"}),
@@ -66,3 +81,41 @@ def test_superpowers_driver_delegates_calls_to_provider() -> None:
         ("run_fix", {"finding": "x"}),
         ("finalize", {"summary": "done"}),
     ]
+
+
+def test_superpowers_driver_stamps_subagent_execution_metadata_for_post_plan_stages() -> None:
+    driver = SuperpowersBackedDriver(provider=FakeSuperpowersProvider())
+
+    delivery = driver.run_dev({"task": "build"})
+    review = driver.run_review({"diff": "..."})
+    fix = driver.run_fix({"finding": "x"})
+    final = driver.finalize({"summary": "done"})
+
+    assert delivery["execution_metadata"] == {
+        "backend": "superpowers-backed",
+        "executor_kind": "subagent",
+        "stage": "running_dev",
+    }
+    assert review["execution_metadata"] == {
+        "backend": "superpowers-backed",
+        "executor_kind": "subagent",
+        "stage": "running_review",
+    }
+    assert fix["execution_metadata"] == {
+        "backend": "superpowers-backed",
+        "executor_kind": "subagent",
+        "stage": "running_fix",
+    }
+    assert "execution_metadata" not in final
+
+
+def test_superpowers_driver_preserves_existing_execution_metadata() -> None:
+    driver = SuperpowersBackedDriver(provider=PreservingSuperpowersProvider())
+
+    review = driver.run_review({"diff": "..."})
+
+    assert review["execution_metadata"] == {
+        "backend": "superpowers-backed",
+        "executor_kind": "subagent",
+        "stage": "running_review",
+    }

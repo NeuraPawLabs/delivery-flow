@@ -12,6 +12,7 @@ from delivery_flow.contracts import (
     RuntimeResult,
     TaskExecutionContext,
 )
+from delivery_flow.contracts.models import ExecutionMetadata
 from delivery_flow.contracts.protocols import CapabilityDetector, ExecutionBackend
 from delivery_flow.runtime.models import (
     BlockerIdentity,
@@ -81,6 +82,44 @@ class DeliveryFlowRuntime:
             ],
         )
 
+    def _coerce_execution_metadata(self, payload: object) -> ExecutionMetadata | None:
+        if payload is None:
+            return None
+        if isinstance(payload, ExecutionMetadata):
+            return payload
+        if not isinstance(payload, dict):
+            raise TypeError("execution_metadata must be an ExecutionMetadata instance or dict")
+
+        return ExecutionMetadata(
+            stage=str(payload.get("stage", "")),
+            backend=str(payload.get("backend", "")),
+            executor_kind=str(payload.get("executor_kind", "")),
+        )
+
+    def _record_execution_metadata(self, payload: object) -> None:
+        if self.trace is None:
+            return
+
+        metadata_payload: object | None
+        if isinstance(payload, (DeliveryArtifact, ReviewArtifact, FinalizationArtifact)):
+            metadata_payload = payload.execution_metadata
+        elif isinstance(payload, dict):
+            metadata_payload = payload.get("execution_metadata")
+        else:
+            metadata_payload = None
+
+        metadata = self._coerce_execution_metadata(metadata_payload)
+        if metadata is None:
+            return
+        if metadata.stage == ControllerState.RUNNING_FINALIZE.value:
+            return
+
+        self.trace.record_execution(
+            stage=metadata.stage,
+            backend=metadata.backend,
+            executor_kind=metadata.executor_kind,
+        )
+
     def _coerce_delivery_artifact(self, payload: DeliveryArtifact | dict[str, object]) -> DeliveryArtifact:
         if isinstance(payload, DeliveryArtifact):
             return payload
@@ -89,6 +128,7 @@ class DeliveryFlowRuntime:
             delivery_summary=str(payload.get("delivery_summary", "unavailable")),
             verification_evidence=[str(item) for item in payload.get("verification_evidence", [])],
             residual_risk=[str(item) for item in payload.get("residual_risk", [])],
+            execution_metadata=self._coerce_execution_metadata(payload.get("execution_metadata")),
         )
 
     def _coerce_review_artifact(self, payload: ReviewArtifact | dict[str, object]) -> ReviewArtifact:
@@ -102,6 +142,7 @@ class DeliveryFlowRuntime:
             required_changes=[str(item) for item in payload.get("required_changes", [])],
             testing_issues=[str(item) for item in payload.get("testing_issues", [])],
             maintainability_issues=[str(item) for item in payload.get("maintainability_issues", [])],
+            execution_metadata=self._coerce_execution_metadata(payload.get("execution_metadata")),
             contract_area=str(payload.get("contract_area", "")),
             failure_kind=str(payload.get("failure_kind", "")),
             expected_resolution=str(payload.get("expected_resolution", "")),
@@ -124,6 +165,7 @@ class DeliveryFlowRuntime:
             delivery_summary=str(source.get("delivery_summary", latest.delivery_summary)),
             verification_evidence=[str(item) for item in source.get("verification_evidence", latest.verification_evidence)],
             residual_risk=[str(item) for item in source.get("residual_risk", latest.residual_risk)],
+            execution_metadata=self._coerce_execution_metadata(source.get("execution_metadata")),
             owner_acceptance_required=bool(source.get("owner_acceptance_required", True)),
             final_review_summary=str(source.get("final_review_summary", source.get("final_summary", ""))),
         )
@@ -324,6 +366,7 @@ class DeliveryFlowRuntime:
         review_payload: ReviewArtifact | dict[str, object],
         latest_delivery: DeliveryArtifact | dict[str, object],
     ) -> tuple[RuntimeResult | None, DeliveryArtifact | dict[str, object]]:
+        self._record_execution_metadata(review_payload)
         review_dict = asdict(review_payload) if isinstance(review_payload, ReviewArtifact) else dict(review_payload)
         task_id = plan_artifact.tasks[task_index].task_id
         normalized = self.normalize_review_result(str(review_dict["raw_result"]))
@@ -414,6 +457,7 @@ class DeliveryFlowRuntime:
             latest_review=review_dict,
         )
         fix_result = self.adapter.run_fix(fix_context)
+        self._record_execution_metadata(fix_result)
         self._transition_to(ControllerState.RUNNING_REVIEW)
         review_context = self._build_task_context(plan_artifact, task_index, latest_delivery=fix_result)
         next_review = self.adapter.run_review(review_context)
@@ -469,6 +513,7 @@ class DeliveryFlowRuntime:
             self._transition_to(ControllerState.RUNNING_DEV)
             dev_context = self._build_task_context(plan_artifact, task_index)
             latest_delivery = self.adapter.run_dev(dev_context)
+            self._record_execution_metadata(latest_delivery)
             self._transition_to(ControllerState.RUNNING_REVIEW)
             review_context = self._build_task_context(plan_artifact, task_index, latest_delivery=latest_delivery)
             review_result = self.adapter.run_review(review_context)

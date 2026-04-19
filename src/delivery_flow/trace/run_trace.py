@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from delivery_flow.contracts.models import ExecutionMetadata
+
 
 @dataclass
 class RunTrace:
     mode: str
     stage_sequence: list[str] = field(default_factory=list)
     stage_events: list[dict[str, str]] = field(default_factory=list)
+    execution_events: list[ExecutionMetadata] = field(default_factory=list)
     task_events: list[dict[str, str]] = field(default_factory=list)
     review_events: list[dict[str, object]] = field(default_factory=list)
     issue_actions: list[dict[str, str]] = field(default_factory=list)
@@ -23,6 +26,48 @@ class RunTrace:
 
     def record_task_event(self, *, task_id: str, event: str) -> None:
         self.task_events.append({"task_id": task_id, "event": event})
+
+    def record_execution(self, *, stage: str, backend: str, executor_kind: str) -> None:
+        self.execution_events.append(
+            ExecutionMetadata(
+                stage=stage,
+                backend=backend,
+                executor_kind=executor_kind,
+            )
+        )
+
+    def execution_summary(self) -> str | None:
+        if not self.execution_events:
+            return None
+
+        grouped_events: list[dict[str, object]] = []
+        for event in self.execution_events:
+            group = next(
+                (
+                    candidate
+                    for candidate in grouped_events
+                    if candidate["backend"] == event.backend and candidate["executor_kind"] == event.executor_kind
+                ),
+                None,
+            )
+            if group is None:
+                group = {
+                    "backend": event.backend,
+                    "executor_kind": event.executor_kind,
+                    "stages": [],
+                }
+                grouped_events.append(group)
+            if event.stage not in group["stages"]:
+                group["stages"].append(event.stage)
+
+        return "; ".join(
+            "backend={backend} executor_kind={executor_kind} stages={stages}".format(
+                backend=str(group["backend"]),
+                executor_kind=str(group["executor_kind"]),
+                stages=",".join(str(stage) for stage in group["stages"]),
+            )
+            for group in grouped_events
+        )
 
     def record_review(
         self,
@@ -56,8 +101,12 @@ class RunTrace:
     ) -> str:
         self.stop_reason = stop_reason.value if hasattr(stop_reason, "value") else str(stop_reason)
         readable_reason = self.stop_reason.replace("_", " ")
+        mode_line = f"mode={self.mode}"
+        execution_summary = self.execution_summary()
+        if execution_summary:
+            mode_line = f"{mode_line} orchestration: {execution_summary}"
         lines = [
-            f"mode={self.mode}",
+            mode_line,
             f"delivery: {delivery_summary}",
             "verification: "
             + (", ".join(verification_evidence) if verification_evidence else "none recorded"),

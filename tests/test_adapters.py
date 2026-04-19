@@ -66,18 +66,47 @@ def test_fallback_adapter_exposes_runtime_action_surface() -> None:
     assert callable(adapter.finalize)
 
 
-def test_adapters_forward_payloads_without_adding_semantics() -> None:
+def test_fallback_adapter_forwards_payloads_without_adding_semantics() -> None:
     payload = {"ticket": 204}
     provider = FakeProvider()
+    adapter = FallbackAdapter(provider=provider)
 
-    for adapter_type in (SuperpowersAdapter, FallbackAdapter):
-        adapter = adapter_type(provider=provider)
-        assert adapter.discuss_and_spec(payload) == provider.discuss_and_spec(payload)
-        assert adapter.plan(payload) == provider.plan(payload)
-        assert adapter.run_dev(payload) == provider.run_dev(payload)
-        assert adapter.run_review(payload) == provider.run_review(payload)
-        assert adapter.run_fix(payload) == provider.run_fix(payload)
-        assert adapter.finalize(payload) == provider.finalize(payload)
+    assert adapter.discuss_and_spec(payload) == provider.discuss_and_spec(payload)
+    assert adapter.plan(payload) == provider.plan(payload)
+    assert adapter.run_dev(payload) == provider.run_dev(payload)
+    assert adapter.run_review(payload) == provider.run_review(payload)
+    assert adapter.run_fix(payload) == provider.run_fix(payload)
+    assert adapter.finalize(payload) == provider.finalize(payload)
+
+
+def test_superpowers_adapter_adds_orchestration_metadata_while_fallback_stays_native() -> None:
+    provider = FakeProvider()
+    payload = {"ticket": 1}
+
+    superpowers = SuperpowersAdapter(provider=provider)
+    fallback = FallbackAdapter(provider=provider)
+
+    assert superpowers.run_dev(payload)["execution_metadata"] == {
+        "backend": "superpowers-backed",
+        "executor_kind": "subagent",
+        "stage": "running_dev",
+    }
+    assert superpowers.run_review(payload)["execution_metadata"] == {
+        "backend": "superpowers-backed",
+        "executor_kind": "subagent",
+        "stage": "running_review",
+    }
+    assert superpowers.run_fix(payload)["execution_metadata"] == {
+        "backend": "superpowers-backed",
+        "executor_kind": "subagent",
+        "stage": "running_fix",
+    }
+    assert "execution_metadata" not in superpowers.finalize(payload)
+
+    assert "execution_metadata" not in fallback.run_dev(payload)
+    assert "execution_metadata" not in fallback.run_review(payload)
+    assert "execution_metadata" not in fallback.run_fix(payload)
+    assert "execution_metadata" not in fallback.finalize(payload)
 
 
 def test_adapters_match_execution_backend_protocol_type_surface() -> None:

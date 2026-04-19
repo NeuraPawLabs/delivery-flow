@@ -27,10 +27,12 @@ class TaskLoopAdapter:
         review_results: list[dict[str, object]],
         *,
         finalize_result: dict[str, object] | None = None,
+        emit_execution_metadata: bool = False,
     ) -> None:
         self.plan_artifact = plan
         self.review_results = list(review_results)
         self.finalize_result = finalize_result
+        self.emit_execution_metadata = emit_execution_metadata
         self.dev_calls: list[str] = []
         self.review_calls: list[str] = []
         self.fix_calls: list[str] = []
@@ -42,34 +44,56 @@ class TaskLoopAdapter:
     def plan(self, payload):
         return self.plan_artifact
 
+    def _execution_metadata(self, stage: str) -> dict[str, str] | None:
+        if not self.emit_execution_metadata:
+            return None
+
+        return {
+            "stage": stage,
+            "backend": "superpowers-backed",
+            "executor_kind": "subagent",
+        }
+
     def run_dev(self, payload):
         assert isinstance(payload, TaskExecutionContext)
         self.dev_calls.append(payload.task.task_id)
-        return {
+        result = {
             "delivery_summary": f"implemented {payload.task.task_id}",
             "verification_evidence": [f"pytest {payload.task.task_id}"],
             "residual_risk": [],
         }
+        execution_metadata = self._execution_metadata("running_dev")
+        if execution_metadata is not None:
+            result["execution_metadata"] = execution_metadata
+        return result
 
     def run_review(self, payload):
         assert isinstance(payload, TaskExecutionContext)
         self.review_calls.append(payload.task.task_id)
         if not self.review_results:
             raise AssertionError("run_review called without a scripted review result")
-        return self.review_results.pop(0)
+        result = dict(self.review_results.pop(0))
+        execution_metadata = self._execution_metadata("running_review")
+        if execution_metadata is not None:
+            result.setdefault("execution_metadata", execution_metadata)
+        return result
 
     def run_fix(self, payload):
         assert isinstance(payload, TaskExecutionContext)
         self.fix_calls.append(payload.task.task_id)
-        return {
+        result = {
             "delivery_summary": f"fixed {payload.task.task_id}",
             "verification_evidence": [f"pytest {payload.task.task_id} --fix"],
             "residual_risk": [],
         }
+        execution_metadata = self._execution_metadata("running_fix")
+        if execution_metadata is not None:
+            result["execution_metadata"] = execution_metadata
+        return result
 
     def finalize(self, payload):
         self.finalize_calls += 1
-        return self.finalize_result or {"final_summary": payload}
+        return dict(self.finalize_result or {"final_summary": payload})
 
 
 def test_runtime_advances_to_next_task_after_task_pass_without_stopping() -> None:
@@ -272,6 +296,68 @@ def test_runtime_surfaces_pending_task_open_issues_and_issue_actions_when_owner_
             "task_id": "task-2",
             "action": "owner_decision_required",
             "summary": "choose rollout order",
+        }
+    ]
+
+
+def test_runtime_surfaces_compact_orchestration_evidence_without_changing_task_loop_semantics() -> None:
+    adapter = TaskLoopAdapter(
+        plan=_plan("task-1"),
+        review_results=[
+            {
+                "raw_result": "changes_requested",
+                "contract_area": "runtime",
+                "failure_kind": "missing transition",
+                "expected_resolution": "re-enter review after fix",
+            },
+            {"raw_result": "approved"},
+        ],
+        emit_execution_metadata=True,
+    )
+    runtime = DeliveryFlowRuntime(
+        adapter=adapter,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    result = runtime.run({"ticket": 206, "goal": "trace compact orchestration evidence"})
+
+    assert result.stop_reason is StopReason.PASS
+    assert adapter.dev_calls == ["task-1"]
+    assert adapter.review_calls == ["task-1", "task-1"]
+    assert adapter.fix_calls == ["task-1"]
+    assert result.stage_sequence == [
+        "discussing_requirement",
+        "writing_spec",
+        "planning",
+        "running_dev",
+        "running_review",
+        "running_fix",
+        "running_review",
+        "running_finalize",
+        "waiting_for_owner",
+    ]
+    assert "completed tasks: task-1" in result.final_summary
+    assert "open issues: none" in result.final_summary
+    assert "owner acceptance required: yes" in result.final_summary
+    assert (
+        "orchestration: backend=superpowers-backed executor_kind=subagent "
+        "stages=running_dev,running_review,running_fix"
+    ) in result.final_summary
+    assert runtime.trace is not None
+    assert (
+        runtime.trace.execution_summary()
+        == "backend=superpowers-backed executor_kind=subagent "
+        "stages=running_dev,running_review,running_fix"
+    )
+    assert runtime.trace.task_events == [
+        {"task_id": "task-1", "event": "started"},
+        {"task_id": "task-1", "event": "completed"},
+    ]
+    assert runtime.trace.issue_actions == [
+        {
+            "task_id": "task-1",
+            "action": "fix_requested",
+            "summary": "runtime: missing transition -> re-enter review after fix",
         }
     ]
 
