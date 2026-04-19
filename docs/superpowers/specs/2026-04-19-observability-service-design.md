@@ -68,10 +68,11 @@ The database should live in a user-level data directory resolved by this priorit
 Recommended layout:
 
 - `<data-home>/delivery-flow/observability/observability.db`
-- `<data-home>/delivery-flow/observability/frontend-dist/`
 - `<data-home>/delivery-flow/observability/logs/`
 
 This keeps runtime data stable across skill upgrades and reinstalls.
+
+Frontend build assets are not part of mutable observability data and should therefore not be stored in the data home. In production they should be bundled with the installed backend/package resources and served from there, so backend code version and served frontend version stay aligned.
 
 ## Data Model
 
@@ -127,11 +128,20 @@ The key semantic change is not the schema itself but the lookup scope:
 - all responses are JSON
 - empty database returns empty lists or explicit empty-state payloads
 - schema missing or schema version mismatch returns explicit error payloads
+- list endpoints must define stable ordering and pagination
+- v1 pagination uses `limit` + `offset`, not cursors
+- default ordering:
+  - `projects`: latest run time descending
+  - `projects/:project_id/runs`: run start time descending
+  - `runs/:run_id/tasks`: task order ascending
+  - `runs/:run_id/events`: event sequence ascending
 - filtering should support:
   - mode
   - stop reason
   - time range
   - result limit
+
+The backend contract must treat pagination and ordering as part of the public surface so the React UI does not have to guess result ordering or try to load the full global dataset at once.
 
 ## UI Panel
 
@@ -188,10 +198,19 @@ The runtime should keep auto-recording enabled by default, but the default desti
 
 Required behavior:
 
-- if a custom recorder is provided, use it
-- otherwise resolve the global default recorder automatically
+- the skill product path must always resolve and use the one global observability database
+- callers using the normal `delivery-flow` skill path must not be able to silently fork data into a second database
+- test-only or internal library injection may still exist below the skill layer, but that extensibility is not part of the skill's runtime contract
+- runtime and backend must both call the same shared path-resolution helper
 - keep runtime writes short and synchronous
 - do not require backend startup for successful execution
+
+This distinction is important:
+
+- product contract: one global database
+- internal testability seam: optional lower-level recorder injection
+
+The product contract wins for all real skill executions.
 
 ## Concurrency And Reliability
 
@@ -201,6 +220,19 @@ Required behavior:
 - multiple concurrent project runs must be supported against the same database
 
 This is acceptable because the backend is read-only and the runtime write pattern is append/projection oriented.
+
+## Shared Path Resolution Contract
+
+Path resolution must be implemented once and reused by runtime and backend. Separate implementations are forbidden.
+
+The shared helper should resolve the global observability home by this exact order:
+
+1. `DELIVERY_FLOW_HOME`
+2. on Linux/other XDG systems: `$XDG_DATA_HOME/delivery-flow` or `~/.local/share/delivery-flow`
+3. on macOS: `~/Library/Application Support/delivery-flow`
+4. on Windows: `%LOCALAPPDATA%\\delivery-flow`
+
+The sqlite path is then derived from that resolved home, not from the current project and not from the skill install directory.
 
 ## Error Handling
 
@@ -222,6 +254,7 @@ These should surface as explicit UI/backend states, not generic failures.
 - global path resolution tests
 - multi-project query tests
 - API contract tests
+- ordering and pagination tests
 - schema-missing and version-mismatch tests
 - static asset serving smoke tests
 
@@ -245,7 +278,7 @@ V1 is complete when all of the following are true:
 - all runs write to one global sqlite database
 - an independent backend service can inspect that database
 - a React UI can browse projects, runs, tasks, loops, dispatches, and events
-- the backend can serve the built UI
+- the backend can serve the built UI from packaged frontend assets with matching version
 - runtime execution still succeeds with no backend running
 
 ## Open Decisions Already Resolved
