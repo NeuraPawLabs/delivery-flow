@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 docs/local-plans/
 .delivery_flow/
+frontend/observability-ui/node_modules/
+frontend/observability-ui/dist/
+frontend/observability-ui/playwright-report/
