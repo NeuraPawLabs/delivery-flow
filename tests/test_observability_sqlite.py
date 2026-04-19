@@ -5,7 +5,12 @@ from pathlib import Path
 
 from delivery_flow.contracts import PlanTaskArtifact
 from delivery_flow.observability.recorder import build_sqlite_recorder
-from delivery_flow.observability.config import resolve_project_context
+from delivery_flow.observability.config import (
+    DEFAULT_DATA_DIRNAME,
+    DEFAULT_DB_FILENAME,
+    resolve_observability_db_path,
+    resolve_project_context,
+)
 from delivery_flow.observability.sqlite_store import SQLiteObservabilityStore
 
 
@@ -50,6 +55,10 @@ def test_project_context_uses_root_name_for_non_git_projects(tmp_path: Path) -> 
     assert context.project_root == root
     assert context.scm_type == "none"
     assert context.branch is None
+
+
+def test_default_observability_db_path_uses_delivery_flow_data_dir_and_name(tmp_path: Path) -> None:
+    assert resolve_observability_db_path(tmp_path) == tmp_path / DEFAULT_DATA_DIRNAME / DEFAULT_DB_FILENAME
 
 
 def test_sqlite_store_scopes_task_identity_to_each_run(tmp_path: Path) -> None:

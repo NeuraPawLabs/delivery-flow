@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from delivery_flow.contracts import RequirementArtifact, ResumeRequestArtifact, ReviewArtifact, RuntimeResult
 from delivery_flow.contracts.protocols import CapabilityDetector, ExecutionBackend
-from delivery_flow.observability.recorder import ObservabilityRecorder
+from delivery_flow.observability.config import resolve_observability_db_path
+from delivery_flow.observability.recorder import ObservabilityRecorder, build_sqlite_recorder
 from delivery_flow.adapters.fallback import FallbackAdapter
 from delivery_flow.adapters.superpowers import SuperpowersAdapter
 from delivery_flow.runtime.engine import DeliveryFlowRuntime
@@ -12,6 +15,8 @@ from delivery_flow.runtime.models import (
     NormalizedReviewResult,
     StopReason,
 )
+
+_DEFAULT_SKILL_NAME = "delivery-flow"
 
 
 class MainAgentLoopController:
@@ -40,6 +45,18 @@ class MainAgentLoopController:
         return runtime.derive_blocker_identity(review_payload)
 
 
+def _resolve_default_recorder(recorder: ObservabilityRecorder | None) -> ObservabilityRecorder:
+    if recorder is not None:
+        return recorder
+
+    project_root = Path.cwd()
+    return build_sqlite_recorder(
+        db_path=resolve_observability_db_path(project_root),
+        project_root=project_root,
+        skill_name=_DEFAULT_SKILL_NAME,
+    )
+
+
 def run_delivery_flow(
     *,
     payload: RequirementArtifact | dict[str, object],
@@ -50,7 +67,11 @@ def run_delivery_flow(
     selector = MainAgentLoopController(capability_detector=capability_detector)
     mode = selector.select_mode()
     adapter = SuperpowersAdapter(provider=provider) if mode == "superpowers-backed" else FallbackAdapter(provider=provider)
-    runtime = DeliveryFlowRuntime(adapter=adapter, capability_detector=capability_detector, recorder=recorder)
+    runtime = DeliveryFlowRuntime(
+        adapter=adapter,
+        capability_detector=capability_detector,
+        recorder=_resolve_default_recorder(recorder),
+    )
     runtime.mode = mode
     return runtime.run(payload)
 
@@ -68,7 +89,11 @@ def resume_delivery_flow(
     if mode not in {"superpowers-backed", "fallback"}:
         raise ValueError("Resume requests require a known previous_result.mode")
     adapter = SuperpowersAdapter(provider=provider) if mode == "superpowers-backed" else FallbackAdapter(provider=provider)
-    runtime = DeliveryFlowRuntime(adapter=adapter, capability_detector=capability_detector, recorder=recorder)
+    runtime = DeliveryFlowRuntime(
+        adapter=adapter,
+        capability_detector=capability_detector,
+        recorder=_resolve_default_recorder(recorder),
+    )
     runtime.mode = mode
     return runtime.resume(resume_request)
 

@@ -6,11 +6,12 @@ from pathlib import Path
 from delivery_flow.observability.models import ProjectContext
 
 
-DEFAULT_DB_FILENAME = "observability.sqlite3"
+DEFAULT_DATA_DIRNAME = ".delivery_flow"
+DEFAULT_DB_FILENAME = "observability.db"
 
 
 def resolve_observability_db_path(project_root: Path, db_name: str = DEFAULT_DB_FILENAME) -> Path:
-    return project_root / ".delivery-flow" / db_name
+    return project_root / DEFAULT_DATA_DIRNAME / db_name
 
 
 def resolve_project_context(project_root: Path, skill_name: str) -> ProjectContext:

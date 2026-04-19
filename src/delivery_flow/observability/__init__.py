@@ -1,5 +1,6 @@
 from delivery_flow.observability.backend import ObservabilityApp, build_observability_app
 from delivery_flow.observability.config import (
+    DEFAULT_DATA_DIRNAME,
     DEFAULT_DB_FILENAME,
     resolve_observability_db_path,
     resolve_project_context,
@@ -10,6 +11,7 @@ from delivery_flow.observability.recorder import ObservabilityRecorder, build_sq
 from delivery_flow.observability.sqlite_store import SQLiteObservabilityStore
 
 __all__ = [
+    "DEFAULT_DATA_DIRNAME",
     "DEFAULT_DB_FILENAME",
     "ObservabilityApp",
     "ObservabilityRecorder",
