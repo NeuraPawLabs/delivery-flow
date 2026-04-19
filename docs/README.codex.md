@@ -60,8 +60,10 @@ modes:
 
 - `superpowers-backed`
 - `fallback`
+- post-plan execution strategy is explicit workflow state: `subagent-driven`, `inline`, or `unresolved`
+- execution-strategy priority is `owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
 - after `plan`, the main agent keeps execution moving until a terminal stop
-- in `superpowers-backed`, post-plan `dev/review/fix` run via subagents
+- in `superpowers-backed`, `subagent-driven` runs post-plan `dev/review/fix` via subagents and explicit `inline` keeps them in the current session
 - `fix` must be followed by `review`, with no stop/wait at task boundaries
 - strict `pass` rejects unresolved required changes, testing issues, and maintainability issues
 
@@ -102,9 +104,15 @@ Expected result: `uv run pytest` completes successfully and all repository tests
 Once installed, `delivery-flow` defaults into one runtime-backed controller loop:
 
 - explicit `superpowers-backed` / `fallback` mode selection
+- explicit execution strategy state for post-plan execution: `subagent-driven`, `inline`, or `unresolved`
+- execution-strategy priority is `owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
 - runtime-owned `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
 - continuous main-agent execution after planning until a terminal stop
-- `superpowers-backed` dispatches subagents for post-plan `dev/review/fix`
+- in `superpowers-backed`, `subagent-driven` dispatches subagents for post-plan `dev/review/fix` and explicit `inline` keeps them in the current session
+- if execution strategy is unresolved, the main agent may ask once after planning
+- if execution strategy is already determined, the skill continues without reopening a generic execution-choice prompt
+- if the owner explicitly changes execution strategy mid-run, the new strategy applies from the next schedulable task
+- once `delivery-flow` owns post-plan workflow, upstream generic templates do not override the determined strategy
 - non-terminal `review` either advances to the next task or enters `fix`; `fix` always returns to `review`
 - strict `pass` rejects unresolved required changes, testing issues, and maintainability issues
 - run trace evidence and owner-visible terminal summary

@@ -32,6 +32,10 @@ Do not use it for:
 - mode is explicit:
   - `mode=superpowers-backed`
   - `mode=fallback`
+- execution strategy is explicit workflow state:
+  - `execution_strategy=subagent-driven`
+  - `execution_strategy=inline`
+  - `execution_strategy=unresolved`
 - after planning, the main agent keeps execution moving task by task until a terminal stop
 - post-plan execution is task-by-task
 - in `superpowers-backed`, post-plan `dev`, `review`, and `fix` run via subagents
@@ -47,6 +51,28 @@ Do not use it for:
 - run-level `pass` happens only after all planned tasks pass and `finalize` runs
 - `pass` stays strict: unresolved required changes, testing issues, or maintainability issues are blockers
 - terminal states always return control to the owner and wait
+
+## Execution Strategy
+
+`delivery-flow` owns execution strategy once it owns post-plan workflow.
+
+Execution strategy resolves by this priority:
+
+1. the current owner's explicit instruction
+2. already-determined workflow state inside the active `delivery-flow` run
+3. project or repository-local preset if one exists
+4. `delivery-flow` default strategy
+5. upstream generic skill or template behavior
+
+Question timing is strict:
+
+- if `execution_strategy=unresolved` and multiple valid post-plan paths remain, the main agent may ask once after planning
+- if execution strategy is already determined, the main agent must not ask again at task boundaries, review loops, or later plan handoffs
+- if the owner explicitly changes strategy mid-run, the main agent updates workflow state and applies it from the next schedulable task
+
+Override rule:
+
+- once `delivery-flow` has taken ownership of post-plan workflow, upstream generic planning templates must not reopen execution-strategy selection if strategy is already determined
 
 ## Stop Rules
 
@@ -74,6 +100,9 @@ Silent fallback is forbidden.
 ## Quick Reference
 
 - main agent schedules
+- main agent owns `execution_strategy`
+- unresolved strategy may trigger one post-plan question
+- determined strategy must not trigger repeated execution-choice prompts
 - main agent keeps post-plan execution moving until a terminal stop
 - subagents execute post-plan work in `superpowers-backed`
 - fallback keeps the same owner-facing loop without `superpowers`

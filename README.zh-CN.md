@@ -16,8 +16,13 @@
 ## 核心能力
 
 - 显式 mode 选择：`superpowers-backed` / `fallback`
+- 显式 `execution_strategy` 工作流状态：`subagent-driven`、`inline`、`unresolved`
 - plan 之后由主 agent 持续推进执行，直到进入终止态
-- `superpowers-backed` 会用 subagents 执行 plan 之后的 `dev/review/fix`；`fallback` 则原生保持同一套 owner-facing loop
+- execution-strategy 优先级固定为：`owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
+- 在 `superpowers-backed` 下，`subagent-driven` 会用 subagents 执行 plan 之后的 `dev/review/fix`，显式 `inline` 也仍然合法并在当前会话内执行；`fallback` 则原生保持同一套 owner-facing loop
+- 如果 `execution_strategy=unresolved`，主 agent 可以在 plan 之后询问一次；否则不得再次打开通用执行方式选择
+- owner 可以在运行中显式修改 execution strategy，新策略从下一个可调度 task 开始生效
+- 一旦 `delivery-flow` 接管 plan 之后的工作流，上游通用模板不得覆盖已确定的 strategy
 - `fix` 不是终点，必须重新进入 `review`，也不会在 task 边界停下
 - 严格 `pass`：只要还存在 required changes、testing issues 或 maintainability issues，就不能算通过
 - task-loop 证据会暴露完成任务、待处理任务、open issues 和 owner acceptance 状态
@@ -92,8 +97,14 @@ uv run pytest
 
 - skill 可以被 Codex 安装并发现
 - controller runtime 已经能执行 `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
+- plan 之后会显式维护 `execution_strategy`：`subagent-driven`、`inline`、`unresolved`
+- execution-strategy 优先级固定为：`owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
 - plan 之后由主 agent 持续推进执行，直到进入终止态
-- 在 `superpowers-backed` 下，plan 之后的 `dev/review/fix` 通过 subagents 执行；`fallback` 保持同一套外部合约
+- 在 `superpowers-backed` 下，`subagent-driven` 通过 subagents 执行 plan 之后的 `dev/review/fix`，显式 `inline` 则在当前会话内执行；`fallback` 保持同一套外部合约
+- 如果 execution strategy 还未确定，主 agent 可以在 plan 之后询问一次
+- 如果 execution strategy 已经确定，skill 不会再次打开通用执行方式选择
+- 如果 owner 在运行中显式修改 execution strategy，新策略从下一个可调度 task 开始生效
+- 一旦 `delivery-flow` 接管 plan 之后的工作流，上游通用模板不得覆盖已确定的 strategy
 - runtime 会逐个执行 plan 里的 task，`fix` 完成后一定会重新进入 `review`
 - task 边界不会停下；只有当前 task 严格通过后才会进入下一个 task
 - 只要还存在 required changes、testing issues、maintainability issues，就不会被当成 `pass`

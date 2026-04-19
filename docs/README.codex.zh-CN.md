@@ -57,8 +57,10 @@ Codex 会在会话启动时扫描 `~/.codex/skills/`，读取 `SKILL.md` frontma
 
 - `superpowers-backed`
 - `fallback`
+- `plan` 之后的 execution strategy 也是显式 workflow state：`subagent-driven`、`inline`、`unresolved`
+- execution-strategy 优先级固定为：`owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
 - `plan` 之后由主 agent 持续推进执行，直到进入终止态
-- 在 `superpowers-backed` 下，plan 之后的 `dev/review/fix` 通过 subagents 执行
+- 在 `superpowers-backed` 下，`subagent-driven` 会用 subagents 执行 plan 之后的 `dev/review/fix`，显式 `inline` 则保持在当前会话内执行
 - `fix` 完成后必须回到 `review`，不会在 task 边界停下
 - 严格 `pass` 会拒绝 unresolved required changes、testing issues、maintainability issues
 
@@ -98,9 +100,15 @@ uv run pytest
 安装完成后，`delivery-flow` 默认会进入一条 runtime-backed controller loop：
 
 - 显式选择 `superpowers-backed` / `fallback`
+- 显式维护 `plan` 之后的 execution strategy：`subagent-driven`、`inline`、`unresolved`
+- execution-strategy 优先级固定为：`owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
 - runtime 自己推进 `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
 - `plan` 之后由主 agent 持续推进执行，直到进入终止态
-- 在 `superpowers-backed` 下，plan 之后的 `dev/review/fix` 通过 subagents 调度
+- 在 `superpowers-backed` 下，`subagent-driven` 通过 subagents 调度 plan 之后的 `dev/review/fix`，显式 `inline` 则保持在当前会话内执行
+- 如果 execution strategy 还未确定，主 agent 可以在 `plan` 之后询问一次
+- 如果 execution strategy 已经确定，skill 不会再次打开通用执行方式选择
+- 如果 owner 在运行中显式修改 execution strategy，新策略从下一个可调度 task 开始生效
+- 一旦 `delivery-flow` 接管 plan 之后的工作流，上游通用模板不得覆盖已确定的 strategy
 - 非终止态 `review` 不是停点：要么进入下一个 task，要么进入 `fix`；`fix` 完成后一定回到 `review`
 - 只要还存在 unresolved required changes、testing issues、maintainability issues，就不能算 `pass`
 - run trace 记录证据，并生成 owner-visible terminal summary
