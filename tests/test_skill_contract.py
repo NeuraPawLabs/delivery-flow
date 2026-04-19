@@ -416,6 +416,8 @@ def test_resume_review_path_preserves_expected_owner_facing_contract_in_both_mod
     assert "open issues: none" in fallback_result.final_summary
     assert "owner acceptance required: no" in backed_result.final_summary
     assert "owner acceptance required: no" in fallback_result.final_summary
+    assert "resume: task=task-2 target=running_review" in backed_result.final_summary
+    assert "resume: task=task-2 target=running_review" in fallback_result.final_summary
     assert "orchestration:" in _mode_line(backed_result.final_summary)
     assert "orchestration:" not in _mode_line(fallback_result.final_summary)
     assert "orchestration:" not in _summary_without_mode_line(backed_result.final_summary)
@@ -474,6 +476,8 @@ def test_resume_dev_restart_preserves_expected_owner_facing_contract_in_both_mod
     assert "open issues: none" in fallback_result.final_summary
     assert "owner acceptance required: no" in backed_result.final_summary
     assert "owner acceptance required: no" in fallback_result.final_summary
+    assert "resume: task=task-2 target=running_dev" in backed_result.final_summary
+    assert "resume: task=task-2 target=running_dev" in fallback_result.final_summary
     assert "orchestration:" in _mode_line(backed_result.final_summary)
     assert "orchestration:" not in _mode_line(fallback_result.final_summary)
     assert "orchestration:" not in _summary_without_mode_line(backed_result.final_summary)
