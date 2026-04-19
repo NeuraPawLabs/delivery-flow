@@ -4,8 +4,17 @@ import re
 from pathlib import Path
 from types import SimpleNamespace
 
-from delivery_flow.controller import run_delivery_flow
-from delivery_flow.contracts import TaskExecutionContext
+from delivery_flow.controller import resume_delivery_flow, run_delivery_flow
+from delivery_flow.contracts import (
+    DeliveryArtifact,
+    PlanArtifact,
+    PlanTaskArtifact,
+    ResumeContextArtifact,
+    ResumeRequestArtifact,
+    ReviewArtifact,
+    RuntimeResult,
+    TaskExecutionContext,
+)
 from delivery_flow.runtime.models import ControllerState, StopReason
 
 
@@ -109,6 +118,75 @@ def _run_mode(
 ):
     return run_delivery_flow(
         payload={"ticket": 301, "goal": "delivery-flow contract"},
+        provider=ScriptedProvider(review_results=review_results, finalize_result=finalize_result),
+        capability_detector=SimpleNamespace(has_superpowers=has_superpowers),
+    )
+
+
+def _resume_request(*, mode: str, restart_current_task_from_dev: bool = False) -> ResumeRequestArtifact:
+    plan = PlanArtifact(
+        summary="delivery-flow contract",
+        tasks=[
+            PlanTaskArtifact(
+                task_id="task-1",
+                title="Task 1",
+                goal="Execute task-1",
+                verification_commands=["uv run pytest"],
+            ),
+            PlanTaskArtifact(
+                task_id="task-2",
+                title="Task 2",
+                goal="Execute task-2",
+                verification_commands=["uv run pytest"],
+            ),
+        ],
+    )
+
+    return ResumeRequestArtifact(
+        previous_result=RuntimeResult(
+            mode=mode,
+            final_state=ControllerState.WAITING_FOR_OWNER,
+            stop_reason=StopReason.NEEDS_OWNER_DECISION,
+            stage_sequence=[
+                "discussing_requirement",
+                "writing_spec",
+                "planning",
+                "running_dev",
+                "running_review",
+                "running_dev",
+                "running_review",
+                "waiting_for_owner",
+            ],
+            completed_task_ids=["task-1"],
+            pending_task_id="task-2",
+            open_issue_summaries=["choose rollout order"],
+            owner_acceptance_required=True,
+            resume_context=ResumeContextArtifact(
+                plan=plan,
+                task_index=1,
+                latest_delivery=DeliveryArtifact(delivery_summary="implemented task-2"),
+                latest_review=ReviewArtifact(
+                    raw_result="owner_input_required",
+                    findings=["choose rollout order"],
+                    owner_decision_reason="choose rollout order",
+                ),
+            ),
+        ),
+        owner_response="roll out to canary first",
+        restart_current_task_from_dev=restart_current_task_from_dev,
+    )
+
+
+def _resume_mode(
+    *,
+    has_superpowers: bool,
+    review_results: list[dict[str, object]],
+    restart_current_task_from_dev: bool = False,
+    finalize_result: dict[str, object] | None = None,
+):
+    mode = "superpowers-backed" if has_superpowers else "fallback"
+    return resume_delivery_flow(
+        request=_resume_request(mode=mode, restart_current_task_from_dev=restart_current_task_from_dev),
         provider=ScriptedProvider(review_results=review_results, finalize_result=finalize_result),
         capability_detector=SimpleNamespace(has_superpowers=has_superpowers),
     )
@@ -283,6 +361,111 @@ def test_owner_decision_path_preserves_expected_owner_facing_contract_in_both_mo
     assert "owner acceptance required: yes" in fallback_result.final_summary
     assert "owner decision: choose rollout order" in backed_result.final_summary
     assert "owner decision: choose rollout order" in fallback_result.final_summary
+    assert _summary_without_mode_line(backed_result.final_summary) == _summary_without_mode_line(
+        fallback_result.final_summary
+    )
+
+
+def test_resume_review_path_preserves_expected_owner_facing_contract_in_both_modes() -> None:
+    backed_result = _resume_mode(
+        has_superpowers=True,
+        review_results=[{"raw_result": "approved"}],
+        finalize_result={"owner_acceptance_required": False},
+    )
+    fallback_result = _resume_mode(
+        has_superpowers=False,
+        review_results=[{"raw_result": "approved"}],
+        finalize_result={"owner_acceptance_required": False},
+    )
+
+    assert backed_result.mode == "superpowers-backed"
+    assert fallback_result.mode == "fallback"
+    assert backed_result.stop_reason is StopReason.PASS
+    assert fallback_result.stop_reason is StopReason.PASS
+    assert backed_result.final_state is ControllerState.WAITING_FOR_OWNER
+    assert fallback_result.final_state is ControllerState.WAITING_FOR_OWNER
+    assert backed_result.stage_sequence == [
+        "discussing_requirement",
+        "writing_spec",
+        "planning",
+        "running_dev",
+        "running_review",
+        "running_dev",
+        "running_review",
+        "waiting_for_owner",
+        "running_review",
+        "running_finalize",
+        "waiting_for_owner",
+    ]
+    assert fallback_result.stage_sequence == backed_result.stage_sequence
+    assert backed_result.completed_task_ids == ["task-1", "task-2"]
+    assert fallback_result.completed_task_ids == ["task-1", "task-2"]
+    assert backed_result.pending_task_id is None
+    assert fallback_result.pending_task_id is None
+    assert backed_result.open_issue_summaries == []
+    assert fallback_result.open_issue_summaries == []
+    assert backed_result.owner_acceptance_required is False
+    assert fallback_result.owner_acceptance_required is False
+    assert "completed tasks: task-1, task-2" in backed_result.final_summary
+    assert "completed tasks: task-1, task-2" in fallback_result.final_summary
+    assert "open issues: none" in backed_result.final_summary
+    assert "open issues: none" in fallback_result.final_summary
+    assert "owner acceptance required: no" in backed_result.final_summary
+    assert "owner acceptance required: no" in fallback_result.final_summary
+    assert _summary_without_mode_line(backed_result.final_summary) == _summary_without_mode_line(
+        fallback_result.final_summary
+    )
+
+
+def test_resume_dev_restart_preserves_expected_owner_facing_contract_in_both_modes() -> None:
+    backed_result = _resume_mode(
+        has_superpowers=True,
+        review_results=[{"raw_result": "approved"}],
+        restart_current_task_from_dev=True,
+        finalize_result={"owner_acceptance_required": False},
+    )
+    fallback_result = _resume_mode(
+        has_superpowers=False,
+        review_results=[{"raw_result": "approved"}],
+        restart_current_task_from_dev=True,
+        finalize_result={"owner_acceptance_required": False},
+    )
+
+    assert backed_result.mode == "superpowers-backed"
+    assert fallback_result.mode == "fallback"
+    assert backed_result.stop_reason is StopReason.PASS
+    assert fallback_result.stop_reason is StopReason.PASS
+    assert backed_result.final_state is ControllerState.WAITING_FOR_OWNER
+    assert fallback_result.final_state is ControllerState.WAITING_FOR_OWNER
+    assert backed_result.stage_sequence == [
+        "discussing_requirement",
+        "writing_spec",
+        "planning",
+        "running_dev",
+        "running_review",
+        "running_dev",
+        "running_review",
+        "waiting_for_owner",
+        "running_dev",
+        "running_review",
+        "running_finalize",
+        "waiting_for_owner",
+    ]
+    assert fallback_result.stage_sequence == backed_result.stage_sequence
+    assert backed_result.completed_task_ids == ["task-1", "task-2"]
+    assert fallback_result.completed_task_ids == ["task-1", "task-2"]
+    assert backed_result.pending_task_id is None
+    assert fallback_result.pending_task_id is None
+    assert backed_result.open_issue_summaries == []
+    assert fallback_result.open_issue_summaries == []
+    assert backed_result.owner_acceptance_required is False
+    assert fallback_result.owner_acceptance_required is False
+    assert "completed tasks: task-1, task-2" in backed_result.final_summary
+    assert "completed tasks: task-1, task-2" in fallback_result.final_summary
+    assert "open issues: none" in backed_result.final_summary
+    assert "open issues: none" in fallback_result.final_summary
+    assert "owner acceptance required: no" in backed_result.final_summary
+    assert "owner acceptance required: no" in fallback_result.final_summary
     assert _summary_without_mode_line(backed_result.final_summary) == _summary_without_mode_line(
         fallback_result.final_summary
     )

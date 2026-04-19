@@ -2,8 +2,18 @@ from types import SimpleNamespace
 
 import pytest
 
-from delivery_flow.contracts import TaskExecutionContext
-from delivery_flow.controller import run_delivery_flow
+from delivery_flow.contracts import (
+    DeliveryArtifact,
+    PlanArtifact,
+    PlanTaskArtifact,
+    ResumeContextArtifact,
+    ResumeRequestArtifact,
+    ReviewArtifact,
+    RuntimeResult,
+    TaskExecutionContext,
+)
+from delivery_flow.controller import resume_delivery_flow, run_delivery_flow
+from delivery_flow.runtime.models import ControllerState, StopReason
 
 
 class FakeProvider:
@@ -151,6 +161,80 @@ class TaskLoopProvider:
         return self.finalize_result or {"final_summary": payload}
 
 
+class ResumeTaskLoopProvider(TaskLoopProvider):
+    def __init__(
+        self,
+        review_results: list[dict[str, object]],
+        *,
+        finalize_result: dict[str, object] | None = None,
+    ) -> None:
+        super().__init__(review_results=review_results, finalize_result=finalize_result)
+        self.dev_owner_responses: list[str | None] = []
+        self.review_owner_responses: list[str | None] = []
+
+    def run_dev(self, payload):
+        assert isinstance(payload, TaskExecutionContext)
+        self.dev_owner_responses.append(payload.owner_response)
+        return super().run_dev(payload)
+
+    def run_review(self, payload):
+        assert isinstance(payload, TaskExecutionContext)
+        self.review_owner_responses.append(payload.owner_response)
+        return super().run_review(payload)
+
+
+def _resume_request(*, mode: str, restart_current_task_from_dev: bool = False) -> ResumeRequestArtifact:
+    plan = PlanArtifact(
+        summary="task-loop default path",
+        tasks=[
+            PlanTaskArtifact(
+                task_id="task-1",
+                title="Task 1",
+                goal="Execute task-1",
+                verification_commands=["uv run pytest"],
+            ),
+            PlanTaskArtifact(
+                task_id="task-2",
+                title="Task 2",
+                goal="Execute task-2",
+                verification_commands=["uv run pytest"],
+            ),
+        ],
+    )
+    return ResumeRequestArtifact(
+        previous_result=RuntimeResult(
+            mode=mode,
+            final_state=ControllerState.WAITING_FOR_OWNER,
+            stop_reason=StopReason.NEEDS_OWNER_DECISION,
+            stage_sequence=[
+                "discussing_requirement",
+                "writing_spec",
+                "planning",
+                "running_dev",
+                "running_review",
+                "running_dev",
+                "running_review",
+                "waiting_for_owner",
+            ],
+            completed_task_ids=["task-1"],
+            pending_task_id="task-2",
+            open_issue_summaries=["choose rollout order"],
+            resume_context=ResumeContextArtifact(
+                plan=plan,
+                task_index=1,
+                latest_delivery=DeliveryArtifact(delivery_summary="implemented task-2"),
+                latest_review=ReviewArtifact(
+                    raw_result="owner_input_required",
+                    findings=["choose rollout order"],
+                    owner_decision_reason="choose rollout order",
+                ),
+            ),
+        ),
+        owner_response="roll out to canary first",
+        restart_current_task_from_dev=restart_current_task_from_dev,
+    )
+
+
 def test_run_delivery_flow_surfaces_task_loop_completion_fields_after_finalize() -> None:
     result = run_delivery_flow(
         payload={"ticket": 91, "goal": "default-use finalize"},
@@ -240,3 +324,45 @@ def test_run_delivery_flow_surfaces_superpowers_execution_evidence_without_chang
     assert "\n".join(superpowers_result.final_summary.splitlines()[1:]) == "\n".join(
         fallback_result.final_summary.splitlines()[1:]
     )
+
+
+def test_resume_delivery_flow_defaults_to_current_task_review() -> None:
+    provider = ResumeTaskLoopProvider(
+        review_results=[{"raw_result": "approved"}],
+        finalize_result={"owner_acceptance_required": False},
+    )
+
+    result = resume_delivery_flow(
+        request=_resume_request(mode="superpowers-backed"),
+        provider=provider,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    assert result.stop_reason is StopReason.PASS
+    assert provider.dev_owner_responses == []
+    assert provider.review_owner_responses == ["roll out to canary first"]
+    assert result.completed_task_ids == ["task-1", "task-2"]
+    assert result.pending_task_id is None
+    assert result.open_issue_summaries == []
+    assert result.owner_acceptance_required is False
+
+
+def test_resume_delivery_flow_can_restart_current_task_from_dev() -> None:
+    provider = ResumeTaskLoopProvider(
+        review_results=[{"raw_result": "approved"}],
+        finalize_result={"owner_acceptance_required": False},
+    )
+
+    result = resume_delivery_flow(
+        request=_resume_request(mode="superpowers-backed", restart_current_task_from_dev=True),
+        provider=provider,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    assert result.stop_reason is StopReason.PASS
+    assert provider.dev_owner_responses == ["roll out to canary first"]
+    assert provider.review_owner_responses == ["roll out to canary first"]
+    assert result.completed_task_ids == ["task-1", "task-2"]
+    assert result.pending_task_id is None
+    assert result.open_issue_summaries == []
+    assert result.owner_acceptance_required is False
