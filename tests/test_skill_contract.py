@@ -244,6 +244,30 @@ def test_activation_prerequisites_align_skill_metadata_with_documented_trigger_p
     _assert_matches(codex_doc_zh, r"(任务.{0,40}(描述|触发|命中)|(描述|触发|命中).{0,40}任务)")
 
 
+def test_skill_frontmatter_declares_top_level_process_role_for_ongoing_delivery_threads() -> None:
+    description = _normalized(_frontmatter_value(_read("SKILL.md"), "description"))
+
+    assert "top-level process skill" in description
+    assert "ongoing delivery thread" in description
+
+
+def test_skill_frontmatter_declares_existing_plan_and_review_feedback_do_not_disqualify_delivery_flow() -> None:
+    description = _normalized(_frontmatter_value(_read("SKILL.md"), "description"))
+
+    assert "even if a plan already exists" in description
+    assert "review feedback" in description
+
+
+def test_skill_frontmatter_declares_neighbor_skills_as_stage_specific_or_subordinate() -> None:
+    description = _normalized(_frontmatter_value(_read("SKILL.md"), "description"))
+
+    assert "stage-specific or subordinate" in description
+    assert "receiving-code-review" in description
+    assert "writing-plans" in description
+    assert "executing-plans" in description
+    assert "test-driven-development" in description
+
+
 def test_skill_doc_declares_delivery_flow_as_top_level_orchestrator_when_applicable() -> None:
     skill_doc = _read("SKILL.md")
 

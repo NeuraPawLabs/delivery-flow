@@ -1,6 +1,6 @@
 ---
 name: delivery-flow
-description: Use when one main agent should continuously drive requirement discussion, planning, and task-by-task dev/review/fix until pass or owner input is required, preferring superpowers capabilities when available and falling back when they are not.
+description: Use when `delivery-flow` should be the top-level process skill for an ongoing delivery thread, even if a plan already exists or review feedback has arrived, and one main agent must keep the same thread moving through requirement discussion, planning, and task-by-task dev/review/fix until pass or owner input is required; `brainstorming`, `writing-plans`, `receiving-code-review`, `executing-plans`, and `test-driven-development` stay stage-specific or subordinate when both apply, preferring superpowers capabilities when available and falling back when they are not.
 ---
 
 # Delivery Flow
