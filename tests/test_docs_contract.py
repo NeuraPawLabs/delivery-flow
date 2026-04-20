@@ -128,6 +128,32 @@ def test_selection_contract_doc_locks_selection_precedence_rules() -> None:
     )
 
 
+def test_router_contract_docs_lock_router_first_take_ownership_and_yield_rules() -> None:
+    router_doc = _read("router-contract.md")
+    router_doc_zh = _read("router-contract.zh-CN.md")
+
+    _assert_mentions(
+        router_doc,
+        "router-first",
+        "take ownership",
+        "yield",
+        "each new user turn",
+        "do not re-route on every internal phase boundary",
+        "ongoing delivery thread",
+        "single phase",
+    )
+    _assert_mentions(
+        router_doc_zh,
+        "router-first",
+        "接管",
+        "让行",
+        "每个新的用户回合",
+        "不要在每个内部阶段边界重判",
+        "持续交付线程",
+        "单一阶段",
+    )
+
+
 def test_project_readmes_cover_current_machine_install_and_verification() -> None:
     readme = _read("README.md")
     readme_zh = _read("README.zh-CN.md")
@@ -136,6 +162,14 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     _assert_mentions(readme, "observability", "global observability database", "react ui", "python backend")
     _assert_mentions(readme, "superpowers-backed", "fallback", "subagents")
     _assert_mentions(readme, "execution_strategy", "subagent-driven", "inline", "unresolved")
+    _assert_mentions(
+        readme,
+        "uv run delivery-flow-observability",
+        "python -m delivery_flow.observability.cli",
+        "python scripts/build_observability_ui.py frontend/observability-ui/dist",
+        "127.0.0.1",
+        "8000",
+    )
     _assert_mentions(
         readme,
         "may ask once after planning",
@@ -161,6 +195,10 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
         "ongoing delivery thread",
         "review/fix continuation",
         "top-level orchestrator",
+        "router-first",
+        "each new user turn",
+        "take ownership",
+        "yield",
     )
     _assert_mentions(readme, "required changes", "testing issues", "maintainability issues")
     _assert_verification_markers(
@@ -174,6 +212,14 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     _assert_mentions(readme_zh, "superpowers-backed", "fallback", "subagents")
     _assert_mentions(readme_zh, "execution_strategy", "subagent-driven", "inline", "unresolved")
     _assert_mentions(readme_zh, "selection-contract.zh-cn.md")
+    _assert_mentions(
+        readme_zh,
+        "uv run delivery-flow-observability",
+        "python -m delivery_flow.observability.cli",
+        "python scripts/build_observability_ui.py frontend/observability-ui/dist",
+        "127.0.0.1",
+        "8000",
+    )
     _assert_mentions(
         readme_zh,
         "询问一次",
@@ -199,6 +245,10 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
         "持续交付线程",
         "review/fix",
         "顶层 orchestrator",
+        "router-first",
+        "每个新的用户回合",
+        "接管",
+        "让行",
     )
     _assert_mentions(readme_zh, "required changes", "testing issues", "maintainability issues")
     _assert_verification_markers(
@@ -235,6 +285,9 @@ def test_codex_guides_lock_execution_strategy_contract() -> None:
         "top-level orchestrator",
         "ongoing delivery thread",
         "review/fix continuation",
+        "router-first",
+        "each new user turn",
+        "yield",
     )
     _assert_mentions(codex_doc, "strict `pass` rejects unresolved required changes")
 
@@ -261,6 +314,9 @@ def test_codex_guides_lock_execution_strategy_contract() -> None:
         "顶层 orchestrator",
         "持续交付线程",
         "review/fix",
+        "router-first",
+        "每个新的用户回合",
+        "让行",
     )
     _assert_mentions(codex_doc_zh, "严格 `pass` 会拒绝 unresolved required changes")
 
@@ -290,4 +346,8 @@ def test_verification_scenarios_cover_execution_strategy_edges() -> None:
         "post-plan orchestration",
         "review feedback arrives mid-execution",
         "stay inside `delivery-flow`",
+        "new feature, no ongoing thread",
+        "yield",
+        "next user turn",
+        "no re-routing on every internal phase boundary",
     )

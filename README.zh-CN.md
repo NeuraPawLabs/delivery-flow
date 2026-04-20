@@ -54,6 +54,8 @@ ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
   英文概览。
 - [selection-contract.zh-CN.md](./selection-contract.zh-CN.md)
   中文 selection 阶段的优先级与边界约定。
+- [router-contract.zh-CN.md](./router-contract.zh-CN.md)
+  中文 router-first 接管与让行约定。
 - [selection-contract.md](./selection-contract.md)
   英文 selection contract。
 - [docs/README.codex.zh-CN.md](./docs/README.codex.zh-CN.md)
@@ -85,6 +87,8 @@ ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
   双 mode 一致性场景。
 - `selection-contract.zh-CN.md`
   中文 selection 边界与优先级约定。
+- `router-contract.zh-CN.md`
+  中文 router-first 接管与让行约定。
 - `selection-contract.md`
   英文 selection contract。
 - `tests/`
@@ -93,6 +97,8 @@ ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
 ## 技能选择指南
 
 `delivery-flow` 应被视为持续交付线程里的顶层 orchestrator。
+
+`delivery-flow` 是 router-first 的：在每个新的用户回合，都先判断应接管持续交付线程，还是在只需要单一阶段时让行。
 
 | 场景 | 优先选择 |
 | --- | --- |
@@ -107,6 +113,8 @@ ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
 - 即使已经有 plan，只要线程仍然是持续交付线程，就应优先 delivery-flow，而不是仅因为有 plan 就切到 `executing-plans`
 - 只要存在或很可能存在 review/fix 持续循环，就应保持 `delivery-flow` 接管外层流程
 - 不能仅因为 planning 完成就切换离开 `delivery-flow`
+- 当新的用户回合是在继续已有持续交付线程时，应接管
+- 当只需要单一阶段时，应让行，例如 brainstorming-only、plan-only 或一次性请求
 
 ## 常见误选模式
 
@@ -135,7 +143,35 @@ npm install
 npm run dev
 ```
 
-开发时前后端分离，生产环境则由 Python backend 直接提供构建后的 UI。
+第二个终端启动后端：
+
+```bash
+cd /home/mm/workdir/code/python/delivery-flow
+uv run delivery-flow-observability --host 127.0.0.1 --port 8000
+```
+
+也支持模块方式：
+
+```bash
+cd /home/mm/workdir/code/python/delivery-flow
+uv run python -m delivery_flow.observability.cli --host 127.0.0.1 --port 8000
+```
+
+开发时前后端分离，Vite 会把 `/api` 代理到 `http://127.0.0.1:8000`。
+
+如果要让后端直接托管构建后的 UI：
+
+```bash
+cd /home/mm/workdir/code/python/delivery-flow/frontend/observability-ui
+npm install
+npm run build
+
+cd /home/mm/workdir/code/python/delivery-flow
+python scripts/build_observability_ui.py frontend/observability-ui/dist
+uv run delivery-flow-observability --host 127.0.0.1 --port 8000
+```
+
+在这种打包静态资源模式下，Python backend 会直接提供构建后的 UI。
 
 ## 验证方式
 

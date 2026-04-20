@@ -55,6 +55,8 @@ Local skill entrypoint:
   Chinese overview.
 - [selection-contract.md](./selection-contract.md)
   Selection-time contract and precedence rules.
+- [router-contract.md](./router-contract.md)
+  Router-first take-ownership and yield rules.
 - [docs/README.codex.md](./docs/README.codex.md)
   Codex install and usage guide.
 - [docs/README.codex.zh-CN.md](./docs/README.codex.zh-CN.md)
@@ -84,12 +86,16 @@ Local skill entrypoint:
   Dual-mode consistency scenarios.
 - `selection-contract.md`
   Selection boundary and precedence contract.
+- `router-contract.md`
+  Router-first take-ownership and yield contract.
 - `tests/`
   Repository verification baseline.
 
 ## Skill Selection Guide
 
 `delivery-flow` should be treated as the top-level orchestrator for an ongoing delivery thread.
+
+`delivery-flow` is router-first: on each new user turn, it should decide whether to take ownership of an ongoing delivery thread or yield when only a single phase is needed.
 
 | Situation | Prefer |
 | --- | --- |
@@ -104,6 +110,8 @@ Key rules:
 - even if a plan already exists, prefer `delivery-flow` over `executing-plans` for an ongoing delivery thread
 - review/fix continuation is a strong signal that `delivery-flow` should stay in control
 - do not switch away merely because planning is complete
+- take ownership when the new user turn continues an ongoing delivery thread
+- yield when only a single phase is needed, such as brainstorming-only, plan-only, or one-shot work
 
 ## Common Mis-Selection Patterns
 
@@ -130,7 +138,35 @@ npm install
 npm run dev
 ```
 
-The backend and frontend remain separate in development, but production serves the built UI from the Python package resources.
+Start the backend in a second shell:
+
+```bash
+cd /home/mm/workdir/code/python/delivery-flow
+uv run delivery-flow-observability --host 127.0.0.1 --port 8000
+```
+
+Module form is also supported:
+
+```bash
+cd /home/mm/workdir/code/python/delivery-flow
+uv run python -m delivery_flow.observability.cli --host 127.0.0.1 --port 8000
+```
+
+The frontend and backend remain separate in development. Vite proxies `/api` to `http://127.0.0.1:8000`.
+
+To serve the built UI from the backend:
+
+```bash
+cd /home/mm/workdir/code/python/delivery-flow/frontend/observability-ui
+npm install
+npm run build
+
+cd /home/mm/workdir/code/python/delivery-flow
+python scripts/build_observability_ui.py frontend/observability-ui/dist
+uv run delivery-flow-observability --host 127.0.0.1 --port 8000
+```
+
+In that packaged-static flow, the Python backend serves the built UI from package resources.
 
 ## Verification
 

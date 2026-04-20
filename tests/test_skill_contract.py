@@ -249,6 +249,7 @@ def test_skill_frontmatter_declares_top_level_process_role_for_ongoing_delivery_
 
     assert "top-level process skill" in description
     assert "ongoing delivery thread" in description
+    assert "each new user turn" in description
 
 
 def test_skill_frontmatter_declares_existing_plan_and_review_feedback_do_not_disqualify_delivery_flow() -> None:
@@ -256,6 +257,7 @@ def test_skill_frontmatter_declares_existing_plan_and_review_feedback_do_not_dis
 
     assert "even if a plan already exists" in description
     assert "review feedback" in description
+    assert "yield when only a single phase is needed" in description
 
 
 def test_skill_frontmatter_declares_neighbor_skills_as_stage_specific_or_subordinate() -> None:
@@ -295,6 +297,18 @@ def test_skill_doc_declares_relationship_to_other_process_skills() -> None:
         skill_doc,
         r"brainstorming.{0,80}writing-plans.{0,80}executing-plans.{0,120}(stage-specific|subordinate)",
     )
+
+
+def test_skill_doc_declares_router_first_routing_decision_contract() -> None:
+    skill_doc = _read("SKILL.md")
+
+    _assert_matches(skill_doc, r"router-first")
+    _assert_matches(skill_doc, r"routing decision")
+    _assert_matches(skill_doc, r"when to take ownership")
+    _assert_matches(skill_doc, r"when to yield")
+    _assert_matches(skill_doc, r"re-evaluate.{0,40}each new user turn")
+    _assert_matches(skill_doc, r"do not re-route.{0,80}internal phase boundar")
+    _assert_matches(skill_doc, r"dev.{0,20}review.{0,20}fix.{0,20}review")
 
 
 def test_pass_path_preserves_expected_owner_facing_contract_in_both_modes() -> None:

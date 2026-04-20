@@ -14,6 +14,12 @@ Use these scenarios to check that the skill still shapes behavior correctly.
 - start one session whose task clearly matches the `SKILL.md` description
 - expect the skill to be selected in both cases
 
+## Scenario 2A: New Feature, No Ongoing Thread
+
+- request is a brand-new task with no ongoing delivery thread
+- only a single phase is needed
+- expect `delivery-flow` to yield rather than over-capture the thread
+
 ## Scenario 3: Compliance Contract Holds
 
 - once the skill is active, expect the main agent to own workflow transitions after planning
@@ -84,6 +90,13 @@ Use these scenarios to check that the skill still shapes behavior correctly.
 - delivery is not finished
 - expect `delivery-flow` to own post-plan orchestration
 
+## Scenario 8E: Next User Turn Re-Evaluates Ownership
+
+- the previous turn did not start inside `delivery-flow`
+- the next user turn clearly continues an ongoing delivery thread
+- expect ownership to be re-evaluated on that next user turn
+- expect `delivery-flow` to take ownership
+
 ## Scenario 9: Needs Owner Decision Stops The Loop
 
 - run in both modes
@@ -133,4 +146,5 @@ Use these scenarios to check that the skill still shapes behavior correctly.
 - expect one continuous controller-owned task loop after planning
 - expect no owner restitching after non-terminal `review` / `fix`
 - expect no owner restitching between passing tasks
+- expect no re-routing on every internal phase boundary
 - expect the final summary to say the runtime is waiting for the owner's next instruction

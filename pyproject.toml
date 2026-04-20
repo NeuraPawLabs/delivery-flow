@@ -5,6 +5,9 @@ description = "Main-agent workflow controller with explicit backend modes."
 requires-python = ">=3.11"
 dependencies = []
 
+[project.scripts]
+delivery-flow-observability = "delivery_flow.observability.cli:main"
+
 [dependency-groups]
 dev = [
   "pytest>=8.4.0",

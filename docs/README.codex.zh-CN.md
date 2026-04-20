@@ -66,10 +66,12 @@ Codex 会在会话启动时扫描 `~/.codex/skills/`，读取 `SKILL.md` frontma
 
 ## 何时 delivery-flow 应优先于 executing-plans
 
+- `delivery-flow` 在每个新的用户回合都应先执行 router-first 判断
 - `delivery-flow` 是持续交付线程里的顶层 orchestrator
 - 即使已经有 plan，只要同一个主 agent 还需要继续推进线程，就应优先 `delivery-flow`
 - 只要还会继续发生 review/fix，selection 就不应降级到 `executing-plans`
 - 不能仅因为 planning 完成就切换离开 `delivery-flow`
+- 当只需要单一阶段时应让行，而不是过度抢占 brainstorming-only、plan-only 或一次性请求
 
 ## 为什么仅有 plan 并不足够
 

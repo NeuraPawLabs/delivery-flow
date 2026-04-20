@@ -69,10 +69,12 @@ modes:
 
 ## When delivery-flow should win over executing-plans
 
+- `delivery-flow` is router-first on each new user turn
 - `delivery-flow` is the top-level orchestrator for an ongoing delivery thread
 - even if a plan already exists, prefer `delivery-flow` over `executing-plans` when one main agent must keep the thread moving
 - review/fix continuation is the clearest signal that the thread still belongs to `delivery-flow`
 - do not switch away merely because planning is complete
+- yield when only a single phase is needed instead of over-capturing brainstorming-only, plan-only, or one-shot tasks
 
 ## Why plan existence alone is not enough
 

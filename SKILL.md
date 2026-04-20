@@ -1,9 +1,11 @@
 ---
 name: delivery-flow
-description: Use when `delivery-flow` should be the top-level process skill for an ongoing delivery thread, even if a plan already exists or review feedback has arrived, and one main agent must keep the same thread moving through requirement discussion, planning, and task-by-task dev/review/fix until pass or owner input is required; `brainstorming`, `writing-plans`, `receiving-code-review`, `executing-plans`, and `test-driven-development` stay stage-specific or subordinate when both apply, preferring superpowers capabilities when available and falling back when they are not.
+description: Use when `delivery-flow` should act as the router-first top-level process skill for an ongoing delivery thread; on each new user turn, take ownership even if a plan already exists or review feedback has arrived, and yield when only a single phase is needed, while `brainstorming`, `writing-plans`, `receiving-code-review`, `executing-plans`, and `test-driven-development` stay stage-specific or subordinate and one main agent keeps the same thread moving through task-by-task dev/review/fix until pass or owner input is required.
 ---
 
 # Delivery Flow
+
+`delivery-flow` is router-first: before it enters execution, it decides whether the current user turn belongs to an ongoing delivery thread.
 
 Use this skill when one main agent should keep work moving through:
 
@@ -14,6 +16,30 @@ Use this skill when one main agent should keep work moving through:
 - `wait`
 
 The main agent owns workflow control. Backends provide capability, but they do not define workflow state.
+
+## Routing Decision
+
+Re-evaluate routing on each new user turn.
+
+If the user turn belongs to an ongoing delivery thread, `delivery-flow` should take ownership as the top-level orchestrator.
+
+If only a single phase is needed, `delivery-flow` should yield to the normal skill ecosystem instead of over-capturing the thread.
+
+Do not re-route on every internal phase boundary once `delivery-flow` already owns the thread.
+
+## When To Take Ownership
+
+- a plan already exists and the same thread must continue
+- review feedback has arrived and the same thread must continue through fix/review continuation
+- the owner is continuing an existing delivery thread on a new user turn
+- one main agent must keep the same thread moving until `pass` or owner input is required
+
+## When To Yield
+
+- the request is only requirement clarification or brainstorming for a brand-new task
+- the request is only to write a plan for a single phase
+- the request is a one-shot task that does not require ongoing delivery ownership
+- only a single phase is needed, so `delivery-flow` should yield rather than take ownership
 
 ## Use It When
 
@@ -52,6 +78,7 @@ Do not use it for:
   - `execution_strategy=subagent-driven`
   - `execution_strategy=inline`
   - `execution_strategy=unresolved`
+- after ownership is taken, execution stays task-by-task `dev -> review -> fix -> review ...` until strict `pass`
 - after planning, the main agent keeps execution moving task by task until a terminal stop
 - post-plan execution is task-by-task
 - in `superpowers-backed`, post-plan `dev`, `review`, and `fix` run via subagents
