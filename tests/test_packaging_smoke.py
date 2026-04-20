@@ -35,7 +35,6 @@ def test_built_wheel_exposes_public_import_surface(tmp_path: Path) -> None:
         "--out-dir",
         str(dist_dir),
         "--no-build-logs",
-        "--no-create-gitignore",
         cwd=repo_root,
     )
 
@@ -108,7 +107,6 @@ def test_built_wheel_includes_packaged_observability_static_assets(tmp_path: Pat
         "--out-dir",
         str(dist_dir),
         "--no-build-logs",
-        "--no-create-gitignore",
         cwd=repo_root,
     )
 

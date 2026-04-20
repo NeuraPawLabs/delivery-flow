@@ -53,6 +53,8 @@ Local skill entrypoint:
 
 - [README.zh-CN](./README.zh-CN.md)
   Chinese overview.
+- [selection-contract.md](./selection-contract.md)
+  Selection-time contract and precedence rules.
 - [docs/README.codex.md](./docs/README.codex.md)
   Codex install and usage guide.
 - [docs/README.codex.zh-CN.md](./docs/README.codex.zh-CN.md)
@@ -80,8 +82,35 @@ Local skill entrypoint:
   Fallback backend contract.
 - `verification-scenarios.md`
   Dual-mode consistency scenarios.
+- `selection-contract.md`
+  Selection boundary and precedence contract.
 - `tests/`
   Repository verification baseline.
+
+## Skill Selection Guide
+
+`delivery-flow` should be treated as the top-level orchestrator for an ongoing delivery thread.
+
+| Situation | Prefer |
+| --- | --- |
+| A new task needs requirement clarification or design exploration | `brainstorming` |
+| A design is approved and the immediate next job is to write an implementation plan | `writing-plans` |
+| A plan exists and the work can finish through linear execution | `executing-plans` |
+| Even if a plan already exists, the work is still an ongoing delivery thread with likely review/fix continuation | `delivery-flow` |
+| Owner keeps adding review findings and expects one main agent to continue the thread | `delivery-flow` |
+
+Key rules:
+
+- even if a plan already exists, prefer `delivery-flow` over `executing-plans` for an ongoing delivery thread
+- review/fix continuation is a strong signal that `delivery-flow` should stay in control
+- do not switch away merely because planning is complete
+
+## Common Mis-Selection Patterns
+
+- Wrong: a plan already exists, so the top-level skill should switch to `executing-plans`
+- Right: the plan exists, but the thread still needs continuous review/fix continuation, so `delivery-flow` remains the top-level orchestrator
+- Wrong: brainstorming or planning finished, so the outer workflow should move to a different process skill
+- Right: `brainstorming`, `writing-plans`, and `executing-plans` are stage-specific or subordinate workflows relative to `delivery-flow` when the same thread still needs continuous delivery ownership
 
 ## Observability Service
 

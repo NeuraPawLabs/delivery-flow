@@ -64,6 +64,25 @@ Codex 会在会话启动时扫描 `~/.codex/skills/`，读取 `SKILL.md` frontma
 - `fix` 完成后必须回到 `review`，不会在 task 边界停下
 - 严格 `pass` 会拒绝 unresolved required changes、testing issues、maintainability issues
 
+## 何时 delivery-flow 应优先于 executing-plans
+
+- `delivery-flow` 是持续交付线程里的顶层 orchestrator
+- 即使已经有 plan，只要同一个主 agent 还需要继续推进线程，就应优先 `delivery-flow`
+- 只要还会继续发生 review/fix，selection 就不应降级到 `executing-plans`
+- 不能仅因为 planning 完成就切换离开 `delivery-flow`
+
+## 为什么仅有 plan 并不足够
+
+- 书面的 plan 并不等于持续交付 ownership 已经消失
+- 如果 owner 还会继续补充反馈，线程还会继续经历实现、review、fix，那么顶层选择仍应保持在 `delivery-flow`
+- `executing-plans` 更适合稳定、线性的执行，而不是持续交付线程
+
+## delivery-flow 与 brainstorming 和 writing-plans 的关系
+
+- `brainstorming` 负责需求澄清和设计成型
+- `writing-plans` 负责产出 implementation plan
+- 当这些 skill 与 `delivery-flow` 同时看起来适用时，后者仍是顶层 orchestrator，而前者属于阶段性或从属 workflow
+
 ## 使用方式
 
 启动新的 Codex 会话后，可以直接要求它使用 `delivery-flow`，例如：

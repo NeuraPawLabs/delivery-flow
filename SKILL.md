@@ -21,11 +21,27 @@ The main agent owns workflow control. Backends provide capability, but they do n
 - planned work should execute task by task rather than as one coarse dev/review pass
 - `superpowers-backed` and `fallback` runs must preserve the same owner-facing contract
 
+## Selection Priority
+
+- `delivery-flow` is the top-level orchestrator for an ongoing delivery thread
+- even if a plan already exists, `delivery-flow` remains the preferred top-level skill for an ongoing delivery thread
+- existing plan presence alone is not enough to prefer `executing-plans`
+- prefer `delivery-flow` over `executing-plans` when the thread includes or is likely to include review/fix continuation
+- review/fix continuation should keep `delivery-flow` in control
+- do not switch away from `delivery-flow` merely because planning is complete
+
 Do not use it for:
 
 - multi-project coordination
 - external task-board synchronization
 - workflows that need a different owner-facing contract per backend
+
+## Relationship To Other Process Skills
+
+- `brainstorming` is for requirement clarification and design shaping, not long-running delivery orchestration
+- `writing-plans` is for producing an implementation plan, not owning post-plan delivery orchestration
+- `executing-plans` is for stable linear execution that can finish without ongoing delivery ownership
+- `brainstorming`, `writing-plans`, and `executing-plans` are stage-specific or subordinate workflows relative to `delivery-flow` when both apply
 
 ## Core Contract
 

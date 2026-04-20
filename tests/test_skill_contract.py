@@ -244,6 +244,35 @@ def test_activation_prerequisites_align_skill_metadata_with_documented_trigger_p
     _assert_matches(codex_doc_zh, r"(任务.{0,40}(描述|触发|命中)|(描述|触发|命中).{0,40}任务)")
 
 
+def test_skill_doc_declares_delivery_flow_as_top_level_orchestrator_when_applicable() -> None:
+    skill_doc = _read("SKILL.md")
+
+    _assert_matches(skill_doc, r"delivery-flow.{0,120}top-level orchestrator")
+    _assert_matches(skill_doc, r"top-level orchestrator.{0,120}ongoing delivery thread")
+
+
+def test_skill_doc_declares_existing_plan_is_not_enough_to_prefer_executing_plans() -> None:
+    skill_doc = _read("SKILL.md")
+
+    _assert_matches(skill_doc, r"existing plan.{0,80}not enough.{0,80}executing-plans")
+
+
+def test_skill_doc_declares_precedence_over_executing_plans_for_ongoing_review_fix_threads() -> None:
+    skill_doc = _read("SKILL.md")
+
+    _assert_matches(skill_doc, r"prefer.{0,40}delivery-flow.{0,40}executing-plans")
+    _assert_matches(skill_doc, r"review/fix.{0,80}delivery-flow")
+
+
+def test_skill_doc_declares_relationship_to_other_process_skills() -> None:
+    skill_doc = _read("SKILL.md")
+
+    _assert_matches(
+        skill_doc,
+        r"brainstorming.{0,80}writing-plans.{0,80}executing-plans.{0,120}(stage-specific|subordinate)",
+    )
+
+
 def test_pass_path_preserves_expected_owner_facing_contract_in_both_modes() -> None:
     backed_result = _run_mode(
         has_superpowers=True,

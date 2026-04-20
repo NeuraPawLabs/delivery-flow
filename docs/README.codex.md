@@ -67,6 +67,25 @@ modes:
 - `fix` must be followed by `review`, with no stop/wait at task boundaries
 - strict `pass` rejects unresolved required changes, testing issues, and maintainability issues
 
+## When delivery-flow should win over executing-plans
+
+- `delivery-flow` is the top-level orchestrator for an ongoing delivery thread
+- even if a plan already exists, prefer `delivery-flow` over `executing-plans` when one main agent must keep the thread moving
+- review/fix continuation is the clearest signal that the thread still belongs to `delivery-flow`
+- do not switch away merely because planning is complete
+
+## Why plan existence alone is not enough
+
+- a written plan does not remove the need for continuous delivery ownership
+- if owner feedback is still arriving and the thread will continue through implementation, review, and fix, the selection should stay with `delivery-flow`
+- `executing-plans` fits stable linear execution, not an ongoing delivery thread
+
+## How delivery-flow relates to brainstorming and writing-plans
+
+- `brainstorming` is for requirement clarification and design shaping
+- `writing-plans` is for producing an implementation plan
+- `brainstorming`, `writing-plans`, and `executing-plans` are stage-specific or subordinate workflows relative to `delivery-flow` when both apply
+
 ## Usage
 
 Start a new Codex session and ask for a task that should benefit from

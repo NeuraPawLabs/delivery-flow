@@ -96,6 +96,38 @@ def test_codex_install_docs_cover_discovery_install_and_verification() -> None:
     )
 
 
+def test_selection_contract_doc_locks_selection_precedence_rules() -> None:
+    selection_doc = _read("selection-contract.md")
+    selection_doc_zh = _read("selection-contract.zh-CN.md")
+
+    _assert_mentions(
+        selection_doc,
+        "top-level orchestrator",
+        "even if a plan already exists",
+        "ongoing delivery thread",
+        "prefer `delivery-flow` over `executing-plans`",
+        "review/fix continuation",
+        "do not switch away merely because planning is complete",
+        "brainstorming",
+        "writing-plans",
+        "executing-plans",
+        "subordinate workflows",
+    )
+    _assert_mentions(
+        selection_doc_zh,
+        "顶层 orchestrator",
+        "即使已经有 plan",
+        "持续交付线程",
+        "优先 `delivery-flow`",
+        "review/fix",
+        "不能仅因为 planning 完成就切换",
+        "brainstorming",
+        "writing-plans",
+        "executing-plans",
+        "从属 workflow",
+    )
+
+
 def test_project_readmes_cover_current_machine_install_and_verification() -> None:
     readme = _read("README.md")
     readme_zh = _read("README.zh-CN.md")
@@ -120,6 +152,16 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
         "upstream generic behavior",
         "current session",
     )
+    _assert_mentions(
+        readme,
+        "skill selection guide",
+        "common mis-selection patterns",
+        "even if a plan already exists",
+        "prefer `delivery-flow` over `executing-plans`",
+        "ongoing delivery thread",
+        "review/fix continuation",
+        "top-level orchestrator",
+    )
     _assert_mentions(readme, "required changes", "testing issues", "maintainability issues")
     _assert_verification_markers(
         readme,
@@ -131,6 +173,7 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     _assert_mentions(readme_zh, "observability", "全局 observability 数据库", "react ui", "python backend")
     _assert_mentions(readme_zh, "superpowers-backed", "fallback", "subagents")
     _assert_mentions(readme_zh, "execution_strategy", "subagent-driven", "inline", "unresolved")
+    _assert_mentions(readme_zh, "selection-contract.zh-cn.md")
     _assert_mentions(
         readme_zh,
         "询问一次",
@@ -146,6 +189,16 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
         "delivery-flow default",
         "upstream generic behavior",
         "当前会话内执行",
+    )
+    _assert_mentions(
+        readme_zh,
+        "技能选择指南",
+        "常见误选模式",
+        "即使已经有 plan",
+        "优先 delivery-flow",
+        "持续交付线程",
+        "review/fix",
+        "顶层 orchestrator",
     )
     _assert_mentions(readme_zh, "required changes", "testing issues", "maintainability issues")
     _assert_verification_markers(
@@ -174,6 +227,15 @@ def test_codex_guides_lock_execution_strategy_contract() -> None:
         "upstream generic behavior",
         "current session",
     )
+    _assert_mentions(
+        codex_doc,
+        "when delivery-flow should win over executing-plans",
+        "why plan existence alone is not enough",
+        "how delivery-flow relates to brainstorming and writing-plans",
+        "top-level orchestrator",
+        "ongoing delivery thread",
+        "review/fix continuation",
+    )
     _assert_mentions(codex_doc, "strict `pass` rejects unresolved required changes")
 
     _assert_mentions(codex_doc_zh, "execution strategy", "subagent-driven", "inline", "unresolved")
@@ -190,6 +252,15 @@ def test_codex_guides_lock_execution_strategy_contract() -> None:
         "delivery-flow default",
         "upstream generic behavior",
         "当前会话内执行",
+    )
+    _assert_mentions(
+        codex_doc_zh,
+        "何时 delivery-flow 应优先于 executing-plans",
+        "为什么仅有 plan 并不足够",
+        "delivery-flow 与 brainstorming 和 writing-plans 的关系",
+        "顶层 orchestrator",
+        "持续交付线程",
+        "review/fix",
     )
     _assert_mentions(codex_doc_zh, "严格 `pass` 会拒绝 unresolved required changes")
 
@@ -208,4 +279,15 @@ def test_verification_scenarios_cover_execution_strategy_edges() -> None:
         "owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior",
         "superpowers-backed",
         "inline",
+    )
+    _assert_mentions(
+        scenarios_doc,
+        "existing plan but ongoing delivery thread",
+        "top-level workflow controller",
+        "plan presence alone does not select executing-plans",
+        "delivery-flow precedence",
+        "brainstorming completes but delivery flow owns the thread",
+        "post-plan orchestration",
+        "review feedback arrives mid-execution",
+        "stay inside `delivery-flow`",
     )

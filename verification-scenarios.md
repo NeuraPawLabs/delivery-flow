@@ -60,6 +60,30 @@ Use these scenarios to check that the skill still shapes behavior correctly.
 - expect the controller to update workflow state
 - expect the new strategy to apply from the next schedulable task
 
+## Scenario 8A: Existing Plan But Ongoing Delivery Thread
+
+- thread already has a written plan
+- owner continues asking for review/fix/further implementation
+- expect `delivery-flow` to remain the top-level workflow controller
+
+## Scenario 8B: Review Feedback Arrives Mid-Execution
+
+- a run is already active
+- owner supplies new review findings
+- expect the workflow to stay inside `delivery-flow`
+
+## Scenario 8C: Plan Presence Alone Does Not Select executing-plans
+
+- both `delivery-flow` and `executing-plans` appear superficially applicable
+- continuous delivery ownership is still required
+- expect delivery-flow precedence
+
+## Scenario 8D: Brainstorming Completes But Delivery Flow Owns The Thread
+
+- brainstorming finished
+- delivery is not finished
+- expect `delivery-flow` to own post-plan orchestration
+
 ## Scenario 9: Needs Owner Decision Stops The Loop
 
 - run in both modes

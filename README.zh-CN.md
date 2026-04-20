@@ -52,6 +52,10 @@ ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
 
 - [README.md](./README.md)
   英文概览。
+- [selection-contract.zh-CN.md](./selection-contract.zh-CN.md)
+  中文 selection 阶段的优先级与边界约定。
+- [selection-contract.md](./selection-contract.md)
+  英文 selection contract。
 - [docs/README.codex.zh-CN.md](./docs/README.codex.zh-CN.md)
   中文 Codex 安装与使用说明。
 - [docs/README.codex.md](./docs/README.codex.md)
@@ -79,8 +83,39 @@ ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
   fallback backend 合约。
 - `verification-scenarios.md`
   双 mode 一致性场景。
+- `selection-contract.zh-CN.md`
+  中文 selection 边界与优先级约定。
+- `selection-contract.md`
+  英文 selection contract。
 - `tests/`
   仓库测试基线。
+
+## 技能选择指南
+
+`delivery-flow` 应被视为持续交付线程里的顶层 orchestrator。
+
+| 场景 | 优先选择 |
+| --- | --- |
+| 新任务还需要需求澄清或方案讨论 | `brainstorming` |
+| 设计已经批准，下一步只是产出 implementation plan | `writing-plans` |
+| 已经有 plan，且工作可以线性执行后结束 | `executing-plans` |
+| 即使已经有 plan，线程仍然是持续交付线程，并且很可能继续进入 review/fix | `delivery-flow` |
+| owner 持续补充 review 问题，并希望同一个主 agent 继续推进 | `delivery-flow` |
+
+关键规则：
+
+- 即使已经有 plan，只要线程仍然是持续交付线程，就应优先 delivery-flow，而不是仅因为有 plan 就切到 `executing-plans`
+- 只要存在或很可能存在 review/fix 持续循环，就应保持 `delivery-flow` 接管外层流程
+- 不能仅因为 planning 完成就切换离开 `delivery-flow`
+
+## 常见误选模式
+
+- Wrong: 已经有 plan，所以顶层 skill 应切换到 `executing-plans`
+- Right: plan 虽然已经存在，但线程仍然需要持续 review/fix 推进，因此 `delivery-flow` 仍是顶层 orchestrator
+- Wrong: brainstorming 或 planning 结束后，外层流程应切给别的 process skill
+- Right: 当同一条线程仍需要持续交付 ownership 时，`brainstorming`、`writing-plans`、`executing-plans` 都只是阶段性或从属 workflow
+
+这意味着：即使已经有 plan，只要还是持续交付线程，顶层仍优先 delivery-flow。
 
 ## Observability Service
 
