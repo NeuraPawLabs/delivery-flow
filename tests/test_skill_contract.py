@@ -5,7 +5,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from delivery_flow.controller import resume_delivery_flow, run_delivery_flow
-from delivery_flow.observability.recorder import build_sqlite_recorder
 from delivery_flow.contracts import (
     DeliveryArtifact,
     PlanArtifact,
@@ -204,14 +203,6 @@ def _resume_mode(
         request=_resume_request(mode=mode, restart_current_task_from_dev=restart_current_task_from_dev),
         provider=ScriptedProvider(review_results=review_results, finalize_result=finalize_result),
         capability_detector=SimpleNamespace(has_superpowers=has_superpowers),
-    )
-
-
-def _build_recorder(tmp_path: Path, name: str):
-    return build_sqlite_recorder(
-        db_path=tmp_path / f"{name}.sqlite3",
-        project_root=tmp_path,
-        skill_name="delivery-flow",
     )
 
 
@@ -572,86 +563,3 @@ def test_resume_dev_restart_preserves_expected_owner_facing_contract_in_both_mod
         fallback_result.final_summary
     )
 
-
-def test_recorder_enabled_run_path_keeps_owner_facing_contract_stable_in_both_modes(tmp_path: Path) -> None:
-    backed_result = _run_mode(
-        has_superpowers=True,
-        review_results=[{"raw_result": "approved"}, {"raw_result": "approved"}],
-        finalize_result={"owner_acceptance_required": False},
-    )
-    backed_with_recorder = run_delivery_flow(
-        payload={"ticket": 301, "goal": "delivery-flow contract"},
-        provider=ScriptedProvider(
-            review_results=[{"raw_result": "approved"}, {"raw_result": "approved"}],
-            finalize_result={"owner_acceptance_required": False},
-        ),
-        capability_detector=SimpleNamespace(has_superpowers=True),
-        recorder=_build_recorder(tmp_path, "run-backed"),
-    )
-    fallback_result = _run_mode(
-        has_superpowers=False,
-        review_results=[{"raw_result": "approved"}, {"raw_result": "approved"}],
-        finalize_result={"owner_acceptance_required": False},
-    )
-    fallback_with_recorder = run_delivery_flow(
-        payload={"ticket": 301, "goal": "delivery-flow contract"},
-        provider=ScriptedProvider(
-            review_results=[{"raw_result": "approved"}, {"raw_result": "approved"}],
-            finalize_result={"owner_acceptance_required": False},
-        ),
-        capability_detector=SimpleNamespace(has_superpowers=False),
-        recorder=_build_recorder(tmp_path, "run-fallback"),
-    )
-
-    _assert_owner_facing_fields_match(backed_result, backed_with_recorder)
-    _assert_owner_facing_fields_match(fallback_result, fallback_with_recorder)
-    assert backed_with_recorder.final_summary == backed_result.final_summary
-    assert fallback_with_recorder.final_summary == fallback_result.final_summary
-    assert backed_with_recorder.mode == "superpowers-backed"
-    assert fallback_with_recorder.mode == "fallback"
-    assert _summary_without_mode_line(backed_with_recorder.final_summary) == _summary_without_mode_line(
-        fallback_with_recorder.final_summary
-    )
-
-
-def test_recorder_enabled_resume_path_keeps_owner_facing_contract_stable_in_both_modes(tmp_path: Path) -> None:
-    backed_result = _resume_mode(
-        has_superpowers=True,
-        review_results=[{"raw_result": "approved"}],
-        finalize_result={"owner_acceptance_required": False},
-    )
-    backed_with_recorder = resume_delivery_flow(
-        request=_resume_request(mode="superpowers-backed"),
-        provider=ScriptedProvider(
-            review_results=[{"raw_result": "approved"}],
-            finalize_result={"owner_acceptance_required": False},
-        ),
-        capability_detector=SimpleNamespace(has_superpowers=True),
-        recorder=_build_recorder(tmp_path, "resume-backed"),
-    )
-    fallback_result = _resume_mode(
-        has_superpowers=False,
-        review_results=[{"raw_result": "approved"}],
-        finalize_result={"owner_acceptance_required": False},
-    )
-    fallback_with_recorder = resume_delivery_flow(
-        request=_resume_request(mode="fallback"),
-        provider=ScriptedProvider(
-            review_results=[{"raw_result": "approved"}],
-            finalize_result={"owner_acceptance_required": False},
-        ),
-        capability_detector=SimpleNamespace(has_superpowers=False),
-        recorder=_build_recorder(tmp_path, "resume-fallback"),
-    )
-
-    _assert_owner_facing_fields_match(backed_result, backed_with_recorder)
-    _assert_owner_facing_fields_match(fallback_result, fallback_with_recorder)
-    assert backed_with_recorder.final_summary == backed_result.final_summary
-    assert fallback_with_recorder.final_summary == fallback_result.final_summary
-    assert "orchestration:" in _mode_line(backed_with_recorder.final_summary)
-    assert "orchestration:" not in _mode_line(fallback_with_recorder.final_summary)
-    assert "orchestration:" not in _summary_without_mode_line(backed_with_recorder.final_summary)
-    assert "orchestration:" not in _summary_without_mode_line(fallback_with_recorder.final_summary)
-    assert _summary_without_mode_line(backed_with_recorder.final_summary) == _summary_without_mode_line(
-        fallback_with_recorder.final_summary
-    )

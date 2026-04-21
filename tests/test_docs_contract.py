@@ -159,17 +159,8 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     readme_zh = _read("README.zh-CN.md")
 
     _assert_mentions(readme, "delivery-flow", "spec", "plan", "dev", "review", "fix")
-    _assert_mentions(readme, "observability", "global observability database", "react ui", "python backend")
     _assert_mentions(readme, "superpowers-backed", "fallback", "subagents")
     _assert_mentions(readme, "execution_strategy", "subagent-driven", "inline", "unresolved")
-    _assert_mentions(
-        readme,
-        "uv run delivery-flow-observability",
-        "python -m delivery_flow.observability.cli",
-        "python scripts/build_observability_ui.py frontend/observability-ui/dist",
-        "127.0.0.1",
-        "8000",
-    )
     _assert_mentions(
         readme,
         "may ask once after planning",
@@ -208,18 +199,9 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     )
 
     _assert_mentions(readme_zh, "delivery-flow", "spec", "plan", "dev", "review", "fix")
-    _assert_mentions(readme_zh, "observability", "全局 observability 数据库", "react ui", "python backend")
     _assert_mentions(readme_zh, "superpowers-backed", "fallback", "subagents")
     _assert_mentions(readme_zh, "execution_strategy", "subagent-driven", "inline", "unresolved")
     _assert_mentions(readme_zh, "selection-contract.zh-cn.md")
-    _assert_mentions(
-        readme_zh,
-        "uv run delivery-flow-observability",
-        "python -m delivery_flow.observability.cli",
-        "python scripts/build_observability_ui.py frontend/observability-ui/dist",
-        "127.0.0.1",
-        "8000",
-    )
     _assert_mentions(
         readme_zh,
         "询问一次",

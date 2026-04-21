@@ -16,7 +16,6 @@ from delivery_flow.contracts import (
 )
 from delivery_flow.contracts.models import ExecutionMetadata
 from delivery_flow.contracts.protocols import CapabilityDetector, ExecutionBackend
-from delivery_flow.observability.recorder import ObservabilityRecorder
 from delivery_flow.runtime.models import (
     BlockerIdentity,
     ControllerState,
@@ -31,11 +30,9 @@ class DeliveryFlowRuntime:
         self,
         adapter: ExecutionBackend | None,
         capability_detector: CapabilityDetector | None,
-        recorder: ObservabilityRecorder | None = None,
     ) -> None:
         self.adapter = adapter
         self.capability_detector = capability_detector
-        self.recorder = recorder
         self.state = ControllerState.DISCUSSING_REQUIREMENT
         self.mode: str | None = None
         self._sequence = [self.state.value]
@@ -46,9 +43,6 @@ class DeliveryFlowRuntime:
         self._open_issue_summaries: list[str] = []
         self._owner_acceptance_required = True
         self.trace: RunTrace | None = None
-        self._run_id: str | None = None
-        self._dispatch_index = 0
-        self._loop_indices: dict[str, int] = {}
 
     def _coerce_plan_task(self, payload: PlanTaskArtifact | dict[str, object], index: int) -> PlanTaskArtifact:
         if isinstance(payload, PlanTaskArtifact):
@@ -412,9 +406,6 @@ class DeliveryFlowRuntime:
         self._open_issue_summaries = []
         self._owner_acceptance_required = True
         self.trace = None
-        self._run_id = None
-        self._dispatch_index = 0
-        self._loop_indices = {}
 
     def _restore_resume_lifecycle(self, previous_result: RuntimeResult) -> None:
         if previous_result.final_state is not ControllerState.WAITING_FOR_OWNER:
@@ -455,13 +446,6 @@ class DeliveryFlowRuntime:
         )
         review_dict = asdict(review_payload) if isinstance(review_payload, ReviewArtifact) else review_payload
         self._transition_to(ControllerState.WAITING_FOR_OWNER)
-        if self.recorder is not None and self._run_id is not None:
-            self.recorder.record_run_completed(
-                run_id=self._run_id,
-                final_state=self.state.value,
-                stop_reason=stop_reason.value,
-                owner_acceptance_required=self._owner_acceptance_required,
-            )
         final_summary = (
             self.trace.build_terminal_summary(
                 delivery_summary=str(delivery_payload.get("delivery_summary", "unavailable")),
@@ -501,20 +485,12 @@ class DeliveryFlowRuntime:
         self._record_execution_metadata(review_payload)
         review_dict = asdict(review_payload) if isinstance(review_payload, ReviewArtifact) else dict(review_payload)
         task_id = plan_artifact.tasks[task_index].task_id
-        loop_index = self._loop_indices.get(task_id, 0)
         normalized = self.normalize_review_result(str(review_dict["raw_result"]))
         if normalized is NormalizedReviewResult.PASS and self._review_requires_blocker_downgrade(review_dict):
             self._apply_strict_pass_blocker_defaults(review_dict)
             normalized = NormalizedReviewResult.BLOCKER
         blocker_identity: dict[str, str] | None = None
         if normalized is NormalizedReviewResult.PASS:
-            if self.recorder is not None and self._run_id is not None and loop_index:
-                self.recorder.record_review(
-                    run_id=self._run_id,
-                    task_id=task_id,
-                    loop_index=loop_index,
-                    normalized_result=normalized.value,
-                )
             if self.trace is not None:
                 self.trace.record_review(
                     raw_result=str(review_dict["raw_result"]),
@@ -524,13 +500,6 @@ class DeliveryFlowRuntime:
             return None, latest_delivery
         if normalized is NormalizedReviewResult.NEEDS_OWNER_DECISION:
             self._open_issue_summaries = self._summarize_open_issues(review_dict)
-            if self.recorder is not None and self._run_id is not None and loop_index:
-                self.recorder.record_review(
-                    run_id=self._run_id,
-                    task_id=task_id,
-                    loop_index=loop_index,
-                    normalized_result=normalized.value,
-                )
             if self.trace is not None:
                 self.trace.record_review(
                     raw_result=str(review_dict["raw_result"]),
@@ -562,13 +531,6 @@ class DeliveryFlowRuntime:
                 "expected_resolution": identity.expected_resolution,
             }
         except RuntimeError as error:
-            if self.recorder is not None and self._run_id is not None and loop_index:
-                self.recorder.record_review(
-                    run_id=self._run_id,
-                    task_id=task_id,
-                    loop_index=loop_index,
-                    normalized_result=normalized.value,
-                )
             if self.trace is not None:
                 self.trace.record_review(
                     raw_result=str(review_dict["raw_result"]),
@@ -595,13 +557,6 @@ class DeliveryFlowRuntime:
             )
 
         issue_summary = self._summarize_blocker(blocker_identity)
-        if self.recorder is not None and self._run_id is not None and loop_index:
-            self.recorder.record_review(
-                run_id=self._run_id,
-                task_id=task_id,
-                loop_index=loop_index,
-                normalized_result=normalized.value,
-            )
         if self.trace is not None:
             self.trace.record_review(
                 raw_result=str(review_dict["raw_result"]),
@@ -634,8 +589,6 @@ class DeliveryFlowRuntime:
         self._previous_blocker_identity = self._last_blocker_identity
         self._last_blocker_identity = identity
         self._transition_to(ControllerState.RUNNING_FIX)
-        self._start_task_loop(task_id, emit_event=True)
-        self._record_task_dispatch(task_id, ControllerState.RUNNING_FIX)
         fix_context = self._build_task_context(
             plan_artifact,
             task_index,
@@ -690,33 +643,6 @@ class DeliveryFlowRuntime:
         if self.trace is not None:
             self.trace.record_stage_entry(new_state.value)
 
-    def _start_task_loop(self, task_id: str, *, emit_event: bool) -> None:
-        if self.recorder is None or self._run_id is None:
-            return
-        loop_index = self._loop_indices.get(task_id, 0) + 1
-        self._loop_indices[task_id] = loop_index
-        self.recorder.record_task_loop_started(
-            run_id=self._run_id,
-            task_id=task_id,
-            loop_index=loop_index,
-            emit_event=emit_event,
-        )
-
-    def _record_task_dispatch(self, task_id: str, selected_stage: ControllerState) -> None:
-        if self.recorder is None or self._run_id is None:
-            return
-        loop_index = self._loop_indices.get(task_id, 0)
-        if not loop_index:
-            return
-        self._dispatch_index += 1
-        self.recorder.record_task_dispatched(
-            run_id=self._run_id,
-            task_id=task_id,
-            loop_index=loop_index,
-            dispatch_index=self._dispatch_index,
-            selected_stage=selected_stage.value,
-        )
-
     def _finalize_current_run(
         self,
         plan_artifact: PlanArtifact,
@@ -762,8 +688,6 @@ class DeliveryFlowRuntime:
 
             if start_with_review and task_index == start_task_index:
                 self._transition_to(ControllerState.RUNNING_REVIEW)
-                self._start_task_loop(task.task_id, emit_event=True)
-                self._record_task_dispatch(task.task_id, ControllerState.RUNNING_REVIEW)
                 review_context = self._build_task_context(
                     plan_artifact,
                     task_index,
@@ -781,8 +705,6 @@ class DeliveryFlowRuntime:
                 )
             else:
                 self._transition_to(ControllerState.RUNNING_DEV)
-                self._start_task_loop(task.task_id, emit_event=True)
-                self._record_task_dispatch(task.task_id, ControllerState.RUNNING_DEV)
                 dev_context = self._build_task_context(
                     plan_artifact,
                     task_index,
@@ -830,17 +752,12 @@ class DeliveryFlowRuntime:
         self.select_mode()
         self.trace = RunTrace(mode=self.mode or "")
         self.trace.record_stage_entry(self.state.value)
-        if self.recorder is not None and self.mode is not None:
-            self._run_id = self.recorder.record_run_started(mode=self.mode)
         self._transition_to(ControllerState.WRITING_SPEC)
         requirement_payload = asdict(payload) if isinstance(payload, RequirementArtifact) else payload
         spec_result = self.adapter.discuss_and_spec(requirement_payload)
         self._transition_to(ControllerState.PLANNING)
         plan_result = self.adapter.plan(spec_result)
         plan_artifact = self._coerce_plan_artifact(plan_result)
-        if self.recorder is not None and self._run_id is not None:
-            for task_order, task in enumerate(plan_artifact.tasks, start=1):
-                self.recorder.record_task_registered(run_id=self._run_id, task=task, task_order=task_order)
         return self._execute_plan_from_task(plan_artifact, 0)
 
     def resume(self, payload: ResumeRequestArtifact | dict[str, object]) -> RuntimeResult:
@@ -858,10 +775,6 @@ class DeliveryFlowRuntime:
         current_task = plan_artifact.tasks[resume_context.task_index]
         if previous_result.pending_task_id != current_task.task_id:
             raise ValueError("Resume requests require pending_task_id to match resume_context.task_index")
-        if self.recorder is not None and self.mode is not None:
-            self._run_id = self.recorder.record_run_started(mode=self.mode)
-            for task_order, task in enumerate(plan_artifact.tasks, start=1):
-                self.recorder.record_task_registered(run_id=self._run_id, task=task, task_order=task_order)
         if self.trace is not None:
             self.trace.record_resume(
                 task_id=current_task.task_id,

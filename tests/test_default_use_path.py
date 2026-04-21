@@ -13,7 +13,6 @@ from delivery_flow.contracts import (
     TaskExecutionContext,
 )
 from delivery_flow.controller import resume_delivery_flow, run_delivery_flow
-from delivery_flow.observability.config import resolve_observability_db_path
 from delivery_flow.runtime.models import ControllerState, StopReason
 
 
@@ -102,25 +101,6 @@ def test_default_use_path_does_not_require_owner_to_restitch_stages() -> None:
         "waiting_for_owner",
     ]
     assert "waiting for the owner's next instruction" in result.final_summary
-
-
-def test_run_delivery_flow_creates_default_observability_db_when_recorder_is_not_provided(
-    tmp_path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("DELIVERY_FLOW_HOME", str(tmp_path / "global-observability"))
-
-    result = run_delivery_flow(
-        payload={"ticket": 90, "goal": "default-use path"},
-        provider=FakeProvider(review_result="approved"),
-        capability_detector=SimpleNamespace(has_superpowers=True),
-    )
-
-    assert result.stop_reason is StopReason.PASS
-    assert resolve_observability_db_path().is_file()
-    assert not (tmp_path / ".delivery_flow" / "observability.db").exists()
-    assert (tmp_path / "global-observability" / "observability" / "observability.db").is_file()
 
 
 class TaskLoopProvider:

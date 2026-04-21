@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from delivery_flow.contracts import RequirementArtifact, ResumeRequestArtifact, ReviewArtifact, RuntimeResult
 from delivery_flow.contracts.protocols import CapabilityDetector, ExecutionBackend
-from delivery_flow.observability.config import resolve_observability_db_path
-from delivery_flow.observability.recorder import ObservabilityRecorder, build_sqlite_recorder
 from delivery_flow.adapters.fallback import FallbackAdapter
 from delivery_flow.adapters.superpowers import SuperpowersAdapter
 from delivery_flow.runtime.engine import DeliveryFlowRuntime
@@ -15,8 +11,6 @@ from delivery_flow.runtime.models import (
     NormalizedReviewResult,
     StopReason,
 )
-
-_DEFAULT_SKILL_NAME = "delivery-flow"
 
 
 class MainAgentLoopController:
@@ -44,25 +38,11 @@ class MainAgentLoopController:
         runtime = DeliveryFlowRuntime(adapter=None, capability_detector=self.capability_detector)
         return runtime.derive_blocker_identity(review_payload)
 
-
-def _resolve_default_recorder(recorder: ObservabilityRecorder | None) -> ObservabilityRecorder:
-    if recorder is not None:
-        return recorder
-
-    project_root = Path.cwd()
-    return build_sqlite_recorder(
-        db_path=resolve_observability_db_path(),
-        project_root=project_root,
-        skill_name=_DEFAULT_SKILL_NAME,
-    )
-
-
 def run_delivery_flow(
     *,
     payload: RequirementArtifact | dict[str, object],
     provider: ExecutionBackend,
     capability_detector: CapabilityDetector,
-    recorder: ObservabilityRecorder | None = None,
 ) -> RuntimeResult:
     selector = MainAgentLoopController(capability_detector=capability_detector)
     mode = selector.select_mode()
@@ -70,7 +50,6 @@ def run_delivery_flow(
     runtime = DeliveryFlowRuntime(
         adapter=adapter,
         capability_detector=capability_detector,
-        recorder=_resolve_default_recorder(recorder),
     )
     runtime.mode = mode
     return runtime.run(payload)
@@ -81,7 +60,6 @@ def resume_delivery_flow(
     request: ResumeRequestArtifact | dict[str, object],
     provider: ExecutionBackend,
     capability_detector: CapabilityDetector,
-    recorder: ObservabilityRecorder | None = None,
 ) -> RuntimeResult:
     probe = DeliveryFlowRuntime(adapter=None, capability_detector=capability_detector)
     resume_request = probe._coerce_resume_request(request)
@@ -92,7 +70,6 @@ def resume_delivery_flow(
     runtime = DeliveryFlowRuntime(
         adapter=adapter,
         capability_detector=capability_detector,
-        recorder=_resolve_default_recorder(recorder),
     )
     runtime.mode = mode
     return runtime.resume(resume_request)

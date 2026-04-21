@@ -62,19 +62,11 @@ def test_top_level_package_does_not_export_compatibility_helpers() -> None:
     assert "build_terminal_summary_snapshot" not in delivery_flow.__all__
 
 
-def test_top_level_package_keeps_observability_internal() -> None:
-    assert "observability" not in delivery_flow.__all__
-    assert "build_sqlite_recorder" not in delivery_flow.__all__
-    assert "ObservabilityRecorder" not in delivery_flow.__all__
-    assert not hasattr(delivery_flow, "ObservabilityRecorder")
-    assert not hasattr(delivery_flow, "ObservabilityApp")
-    assert not hasattr(delivery_flow, "build_sqlite_recorder")
-    assert not hasattr(delivery_flow, "build_observability_app")
+def test_top_level_package_keeps_internal_helpers_out_of_star_imports() -> None:
     namespace: dict[str, object] = {}
     exec("from delivery_flow import *", {}, namespace)
-    assert "observability" not in namespace
-    assert "build_sqlite_recorder" not in namespace
-    assert "ObservabilityRecorder" not in namespace
+    assert "build_normalized_review_snapshot" not in namespace
+    assert "build_terminal_summary_snapshot" not in namespace
 
 
 def test_top_level_package_exports_resume_entry_point() -> None:

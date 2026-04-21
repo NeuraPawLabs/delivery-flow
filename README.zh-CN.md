@@ -35,11 +35,11 @@
 Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLabs/delivery-flow/main/.codex/INSTALL.md
 ```
 
-当前机器手动安装：
+使用标准 skill clone 路径手动安装：
 
 ```bash
 mkdir -p ~/.codex/skills
-ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
+ln -s ~/.codex/delivery-flow ~/.codex/skills/delivery-flow
 ```
 
 安装后的 skill 入口：
@@ -125,58 +125,10 @@ ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
 
 这意味着：即使已经有 plan，只要还是持续交付线程，顶层仍优先 delivery-flow。
 
-## Observability Service
-
-- 现在所有项目都会写入同一个全局 observability 数据库
-- 默认数据库路径会解析为 `DELIVERY_FLOW_HOME/observability/observability.db`
-- 即使显式传入 `project_root`，也不得分叉到项目本地 observability 数据库
-- 写路径仍然独立，runtime 不依赖 backend 是否启动
-- backend 提供只读 observability API，并托管打包后的前端静态资源
-- React UI 位于 `frontend/observability-ui`
-- 开发时前端 dev server 和 Python backend 分开运行
-
-本地开发常用流程：
-
-```bash
-cd /home/mm/workdir/code/python/delivery-flow/frontend/observability-ui
-npm install
-npm run dev
-```
-
-第二个终端启动后端：
-
-```bash
-cd /home/mm/workdir/code/python/delivery-flow
-uv run delivery-flow-observability --host 127.0.0.1 --port 8000
-```
-
-也支持模块方式：
-
-```bash
-cd /home/mm/workdir/code/python/delivery-flow
-uv run python -m delivery_flow.observability.cli --host 127.0.0.1 --port 8000
-```
-
-开发时前后端分离，Vite 会把 `/api` 代理到 `http://127.0.0.1:8000`。
-
-如果要让后端直接托管构建后的 UI：
-
-```bash
-cd /home/mm/workdir/code/python/delivery-flow/frontend/observability-ui
-npm install
-npm run build
-
-cd /home/mm/workdir/code/python/delivery-flow
-python scripts/build_observability_ui.py frontend/observability-ui/dist
-uv run delivery-flow-observability --host 127.0.0.1 --port 8000
-```
-
-在这种打包静态资源模式下，Python backend 会直接提供构建后的 UI。
-
 ## 验证方式
 
 ```bash
-cd /home/mm/workdir/code/python/delivery-flow
+cd ~/.codex/delivery-flow
 uv run pytest
 ```
 

@@ -36,11 +36,11 @@ Tell Codex:
 Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLabs/delivery-flow/main/.codex/INSTALL.md
 ```
 
-Manual install for the current machine:
+Manual install from the standard skill clone path:
 
 ```bash
 mkdir -p ~/.codex/skills
-ln -s /home/mm/workdir/code/python/delivery-flow ~/.codex/skills/delivery-flow
+ln -s ~/.codex/delivery-flow ~/.codex/skills/delivery-flow
 ```
 
 Local skill entrypoint:
@@ -120,58 +120,10 @@ Key rules:
 - Wrong: brainstorming or planning finished, so the outer workflow should move to a different process skill
 - Right: `brainstorming`, `writing-plans`, and `executing-plans` are stage-specific or subordinate workflows relative to `delivery-flow` when the same thread still needs continuous delivery ownership
 
-## Observability Service
-
-- all projects now write to one global observability database
-- the default database path resolves to `DELIVERY_FLOW_HOME/observability/observability.db`
-- passing `project_root` must not fork data into a project-local observability database
-- the read side stays independent: runtime writes do not depend on the backend service being up
-- the backend exposes a read-only observability API and serves packaged frontend assets
-- the React UI lives in `frontend/observability-ui`
-- during development, run the frontend dev server separately from the Python backend service
-
-Typical local workflow:
-
-```bash
-cd /home/mm/workdir/code/python/delivery-flow/frontend/observability-ui
-npm install
-npm run dev
-```
-
-Start the backend in a second shell:
-
-```bash
-cd /home/mm/workdir/code/python/delivery-flow
-uv run delivery-flow-observability --host 127.0.0.1 --port 8000
-```
-
-Module form is also supported:
-
-```bash
-cd /home/mm/workdir/code/python/delivery-flow
-uv run python -m delivery_flow.observability.cli --host 127.0.0.1 --port 8000
-```
-
-The frontend and backend remain separate in development. Vite proxies `/api` to `http://127.0.0.1:8000`.
-
-To serve the built UI from the backend:
-
-```bash
-cd /home/mm/workdir/code/python/delivery-flow/frontend/observability-ui
-npm install
-npm run build
-
-cd /home/mm/workdir/code/python/delivery-flow
-python scripts/build_observability_ui.py frontend/observability-ui/dist
-uv run delivery-flow-observability --host 127.0.0.1 --port 8000
-```
-
-In that packaged-static flow, the Python backend serves the built UI from package resources.
-
 ## Verification
 
 ```bash
-cd /home/mm/workdir/code/python/delivery-flow
+cd ~/.codex/delivery-flow
 uv run pytest
 ```
 
