@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# SessionStart hook for delivery-flow plugin
+
+set -euo pipefail
+
+BOOTSTRAP="<EXTREMELY_IMPORTANT>\nUse the \`using-delivery-flow\` routing skill at the start of the conversation. It decides whether this turn belongs to ongoing delivery threads that should route into \`delivery-flow\`, or should yield to a normal single-phase skill.\n</EXTREMELY_IMPORTANT>"
+
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+BOOTSTRAP="$(escape_for_json "$BOOTSTRAP")"
+
+if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+    printf '{\n  "additional_context": "%s"\n}\n' "$BOOTSTRAP"
+elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
+    printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$BOOTSTRAP"
+else
+    printf '{\n  "additionalContext": "%s"\n}\n' "$BOOTSTRAP"
+fi
+
+exit 0

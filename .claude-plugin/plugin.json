@@ -1,0 +1,17 @@
+{
+  "name": "delivery-flow",
+  "description": "Router-first delivery orchestration skills for ongoing delivery threads",
+  "version": "0.1.0",
+  "author": {
+    "name": "NeuraPawLabs"
+  },
+  "homepage": "https://github.com/NeuraPawLabs/delivery-flow",
+  "repository": "https://github.com/NeuraPawLabs/delivery-flow",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "delivery-flow",
+    "routing",
+    "orchestration"
+  ]
+}
