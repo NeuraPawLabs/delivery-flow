@@ -1,0 +1,10 @@
+{
+  "name": "delivery-flow-opencode",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": ".opencode/plugins/delivery-flow.js",
+  "exports": {
+    ".": "./.opencode/plugins/delivery-flow.js"
+  }
+}
