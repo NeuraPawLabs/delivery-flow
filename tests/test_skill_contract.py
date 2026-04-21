@@ -56,6 +56,29 @@ def _assert_matches(document: str, pattern: str) -> None:
     assert re.search(pattern, _normalized(document)), pattern
 
 
+def _section_bounds(document: str, heading: str) -> tuple[int, int]:
+    pattern = rf"^## {re.escape(heading)}\n"
+    match = re.search(pattern, document, flags=re.MULTILINE)
+    if not match:
+        raise AssertionError(f"Missing section: {heading}")
+
+    start = match.start()
+    next_heading = re.search(r"^## ", document[match.end() :], flags=re.MULTILINE)
+    end = len(document) if next_heading is None else match.end() + next_heading.start()
+    return start, end
+
+
+def _section_body(document: str, heading: str) -> str:
+    start, end = _section_bounds(document, heading)
+    section = document[start:end]
+    lines = section.splitlines()[1:]
+    return "\n".join(lines).strip()
+
+
+def _section_headings(document: str) -> list[str]:
+    return re.findall(r"^## (.+)$", document, flags=re.MULTILINE)
+
+
 def _assert_owner_facing_fields_match(left: RuntimeResult, right: RuntimeResult) -> None:
     assert left.stop_reason is right.stop_reason
     assert left.final_state is right.final_state
@@ -261,45 +284,109 @@ def test_skill_frontmatter_declares_neighbor_skills_as_stage_specific_or_subordi
     assert "test-driven-development" in description
 
 
-def test_skill_doc_declares_delivery_flow_as_top_level_orchestrator_when_applicable() -> None:
+def test_shared_skill_surface_exists() -> None:
+    assert (REPO_ROOT / "skills" / "delivery-flow" / "SKILL.md").is_file()
+
+
+def test_using_delivery_flow_is_a_root_routing_skill() -> None:
+    routing_doc = _read("skills/using-delivery-flow/SKILL.md")
+    description = _normalized(_frontmatter_value(routing_doc, "description"))
+
+    assert _frontmatter_value(routing_doc, "name") == "using-delivery-flow"
+    assert "starting a conversation" in description
+    assert "continuing an ongoing delivery thread" in description
+    assert "delivery-flow" in description
+    assert "single-phase" in description
+
+    body = _normalized(routing_doc)
+    for marker in (
+        "thin routing skill",
+        "route into `delivery-flow`",
+        "yield to the normal stage-specific skills",
+        "do not duplicate `delivery-flow` execution semantics",
+    ):
+        assert marker in body
+
+
+def test_legacy_root_skill_remains_available() -> None:
+    legacy_doc = _read("SKILL.md")
+
+    assert _frontmatter_value(legacy_doc, "name") == "delivery-flow"
+    _assert_matches(legacy_doc, r"legacy execution entrypoint")
+
+
+def test_legacy_root_skill_stays_synchronized_with_shared_execution_skill_except_installation_note() -> None:
+    legacy_doc = _read("SKILL.md")
+    shared_doc = _read("skills/delivery-flow/SKILL.md")
+
+    assert _frontmatter_value(legacy_doc, "name") == _frontmatter_value(shared_doc, "name")
+    assert _frontmatter_value(legacy_doc, "description") == _frontmatter_value(shared_doc, "description")
+
+    legacy_headings = [heading for heading in _section_headings(legacy_doc) if heading != "Installation Note"]
+    shared_headings = _section_headings(shared_doc)
+    assert legacy_headings == shared_headings
+
+    for heading in shared_headings:
+        assert _section_body(legacy_doc, heading) == _section_body(shared_doc, heading)
+
+
+def test_legacy_root_skill_preserves_root_only_installation_note_markers() -> None:
+    installation_note = _section_body(_read("SKILL.md"), "Installation Note")
+
+    for marker in (
+        "shared execution skill for new installs",
+        "shared root routing skill",
+        "legacy execution entrypoint for repo-root codex installs",
+    ):
+        assert marker in _normalized(installation_note)
+
+
+def test_skill_doc_declares_selection_priority_and_neighbor_skill_markers() -> None:
+    selection_priority = _section_body(_read("SKILL.md"), "Selection Priority")
+    relationship = _section_body(_read("SKILL.md"), "Relationship To Other Process Skills")
+
+    for marker in (
+        "top-level orchestrator for an ongoing delivery thread",
+        "prefer `delivery-flow` over `executing-plans`",
+        "existing plan presence alone is not enough",
+        "review/fix continuation",
+    ):
+        assert marker in selection_priority
+
+    for marker in (
+        "`brainstorming`",
+        "`writing-plans`",
+        "`executing-plans`",
+        "stage-specific or subordinate workflows relative to `delivery-flow`",
+    ):
+        assert marker in relationship
+
+
+def test_skill_doc_declares_routing_contract_via_sections_and_markers() -> None:
     skill_doc = _read("SKILL.md")
+    routing_decision = _section_body(skill_doc, "Routing Decision")
+    when_to_take_ownership = _section_body(skill_doc, "When To Take Ownership")
+    when_to_yield = _section_body(skill_doc, "When To Yield")
+    use_it_when = _section_body(skill_doc, "Use It When")
 
-    _assert_matches(skill_doc, r"delivery-flow.{0,120}top-level orchestrator")
-    _assert_matches(skill_doc, r"top-level orchestrator.{0,120}ongoing delivery thread")
+    for marker in (
+        "router-first",
+        "routing decision",
+        "re-evaluate routing on each new user turn",
+        "do not re-route on every internal phase boundary",
+    ):
+        assert marker in _normalized(skill_doc)
 
+    for marker in (
+        "take ownership as the top-level orchestrator",
+        "yield to the normal skill ecosystem",
+    ):
+        assert marker in routing_decision
 
-def test_skill_doc_declares_existing_plan_is_not_enough_to_prefer_executing_plans() -> None:
-    skill_doc = _read("SKILL.md")
-
-    _assert_matches(skill_doc, r"existing plan.{0,80}not enough.{0,80}executing-plans")
-
-
-def test_skill_doc_declares_precedence_over_executing_plans_for_ongoing_review_fix_threads() -> None:
-    skill_doc = _read("SKILL.md")
-
-    _assert_matches(skill_doc, r"prefer.{0,40}delivery-flow.{0,40}executing-plans")
-    _assert_matches(skill_doc, r"review/fix.{0,80}delivery-flow")
-
-
-def test_skill_doc_declares_relationship_to_other_process_skills() -> None:
-    skill_doc = _read("SKILL.md")
-
-    _assert_matches(
-        skill_doc,
-        r"brainstorming.{0,80}writing-plans.{0,80}executing-plans.{0,120}(stage-specific|subordinate)",
-    )
-
-
-def test_skill_doc_declares_router_first_routing_decision_contract() -> None:
-    skill_doc = _read("SKILL.md")
-
-    _assert_matches(skill_doc, r"router-first")
-    _assert_matches(skill_doc, r"routing decision")
-    _assert_matches(skill_doc, r"when to take ownership")
-    _assert_matches(skill_doc, r"when to yield")
-    _assert_matches(skill_doc, r"re-evaluate.{0,40}each new user turn")
-    _assert_matches(skill_doc, r"do not re-route.{0,80}internal phase boundar")
-    _assert_matches(skill_doc, r"dev.{0,20}review.{0,20}fix.{0,20}review")
+    assert "a plan already exists" in when_to_take_ownership
+    assert "review feedback has arrived" in when_to_take_ownership
+    assert "only a single phase is needed" in when_to_yield
+    assert "task by task" in use_it_when
 
 
 def test_pass_path_preserves_expected_owner_facing_contract_in_both_modes() -> None:
@@ -562,4 +649,3 @@ def test_resume_dev_restart_preserves_expected_owner_facing_contract_in_both_mod
     assert _summary_without_mode_line(backed_result.final_summary) == _summary_without_mode_line(
         fallback_result.final_summary
     )
-

@@ -5,12 +5,6 @@ description: Use when `delivery-flow` should act as the router-first top-level p
 
 # Delivery Flow
 
-## Installation Note
-
-- `skills/delivery-flow/SKILL.md` is the shared execution skill for new installs.
-- `skills/using-delivery-flow/SKILL.md` is the shared root routing skill.
-- The root `SKILL.md` remains the legacy execution entrypoint for repo-root Codex installs.
-
 `delivery-flow` is router-first: before it enters execution, it decides whether the current user turn belongs to an ongoing delivery thread.
 
 Use this skill when one main agent should keep work moving through:
