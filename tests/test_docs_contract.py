@@ -27,6 +27,11 @@ def _assert_mentions(doc: str, *fragments: str) -> None:
         assert fragment.lower() in normalized_doc
 
 
+def _assert_markdown_link(doc: str, target: str) -> None:
+    pattern = re.compile(rf"\[[^\]]+\]\({re.escape(target)}\)", re.IGNORECASE)
+    assert pattern.search(doc)
+
+
 def test_skill_doc_keeps_core_task_loop_contract() -> None:
     skill_doc = _read("SKILL.md")
 
@@ -88,11 +93,67 @@ def test_backend_docs_keep_mode_and_review_smoke() -> None:
 def test_codex_install_docs_cover_discovery_install_and_verification() -> None:
     install_doc = _read(".codex/INSTALL.md")
 
-    _assert_mentions(install_doc, "delivery-flow", ".codex/skills", "skill.md")
+    _assert_mentions(
+        install_doc,
+        "delivery-flow",
+        "~/.agents/skills",
+        "skills/delivery-flow",
+        "skills/using-delivery-flow",
+        "`uv` for local verification",
+        "https://github.com/neurapawlabs/delivery-flow.git",
+        "windows",
+        "mklink /j",
+        "powershell",
+    )
     _assert_verification_markers(
         install_doc,
         success_marker="completes successfully",
         tests_pass_marker="all repository tests pass",
+    )
+
+
+def test_platform_docs_cover_bootstrap_install_paths() -> None:
+    codex_install = _read(".codex/INSTALL.md")
+    readme_codex = _read("docs/README.codex.md")
+    readme_claude = _read("docs/README.claude.md")
+    readme_opencode = _read("docs/README.opencode.md")
+
+    _assert_mentions(
+        codex_install,
+        "~/.agents/skills",
+        "skills/delivery-flow",
+        "skills/using-delivery-flow",
+    )
+    _assert_mentions(
+        readme_codex,
+        "native skill discovery",
+        "using-delivery-flow",
+        "restart codex",
+        "windows powershell",
+        "test-path",
+        "get-item",
+        "fetch and follow instructions from https://raw.githubusercontent.com/neurapawlabs/delivery-flow/main/.codex/install.md",
+    )
+    _assert_mentions(
+        readme_claude,
+        "sessionstart",
+        ".claude-plugin",
+        ".cursor-plugin",
+        "bootstrap",
+        "routing-only",
+        "does not replace the `delivery-flow` skill contract",
+        "ongoing delivery threads can prefer `delivery-flow`",
+    )
+    _assert_mentions(
+        readme_opencode,
+        "plugin",
+        "skills/",
+        "directory",
+        "using-delivery-flow",
+        "bootstrap",
+        "routing-only",
+        "config hook",
+        "experimental.chat.system.transform",
     )
 
 
@@ -191,6 +252,9 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
         "take ownership",
         "yield",
     )
+    _assert_markdown_link(readme, "./docs/README.codex.md")
+    _assert_markdown_link(readme, "./docs/README.claude.md")
+    _assert_markdown_link(readme, "./docs/README.opencode.md")
     _assert_mentions(readme, "required changes", "testing issues", "maintainability issues")
     _assert_verification_markers(
         readme,
@@ -232,6 +296,9 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
         "接管",
         "让行",
     )
+    _assert_markdown_link(readme_zh, "./docs/README.codex.zh-CN.md")
+    _assert_markdown_link(readme_zh, "./docs/README.claude.zh-CN.md")
+    _assert_markdown_link(readme_zh, "./docs/README.opencode.zh-CN.md")
     _assert_mentions(readme_zh, "required changes", "testing issues", "maintainability issues")
     _assert_verification_markers(
         readme_zh,
@@ -301,6 +368,42 @@ def test_codex_guides_lock_execution_strategy_contract() -> None:
         "让行",
     )
     _assert_mentions(codex_doc_zh, "严格 `pass` 会拒绝 unresolved required changes")
+
+
+def test_platform_docs_have_zh_cn_parity() -> None:
+    readme_codex_zh = _read("docs/README.codex.zh-CN.md")
+    readme_claude_zh = _read("docs/README.claude.zh-CN.md")
+    readme_opencode_zh = _read("docs/README.opencode.zh-CN.md")
+
+    _assert_mentions(
+        readme_codex_zh,
+        "using-delivery-flow",
+        "原生 skill discovery",
+        "windows powershell",
+        "test-path",
+        "get-item",
+    )
+    _assert_mentions(
+        readme_claude_zh,
+        "sessionstart",
+        ".claude-plugin",
+        ".cursor-plugin",
+        "bootstrap",
+        "routing-only",
+        "不会替代 `delivery-flow` 的 skill contract",
+        "持续交付线程优先进入 `delivery-flow`",
+    )
+    _assert_mentions(
+        readme_opencode_zh,
+        "plugin",
+        "skills/",
+        "目录",
+        "using-delivery-flow",
+        "bootstrap",
+        "routing-only",
+        "config hook",
+        "experimental.chat.system.transform",
+    )
 
 
 def test_verification_scenarios_cover_execution_strategy_edges() -> None:

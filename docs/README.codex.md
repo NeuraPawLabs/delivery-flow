@@ -25,13 +25,13 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 
 1. Clone the repo:
    ```bash
-   git clone git@github.com:NeuraPawLabs/delivery-flow.git ~/.codex/delivery-flow
+   git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/delivery-flow
    ```
 
-2. Create the skill symlink:
+2. Create the native skill discovery symlink:
    ```bash
-   mkdir -p ~/.codex/skills
-   ln -s ~/.codex/delivery-flow ~/.codex/skills/delivery-flow
+   mkdir -p ~/.agents/skills
+   ln -s ~/.codex/delivery-flow/skills ~/.agents/skills/delivery-flow
    ```
 
 3. Restart Codex.
@@ -41,19 +41,27 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 Use a junction instead of a symlink:
 
 ```powershell
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.codex\skills"
-cmd /c mklink /J "$env:USERPROFILE\.codex\skills\delivery-flow" "$env:USERPROFILE\.codex\delivery-flow"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.agents\skills"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills"
 ```
 
 ## How It Works
 
-Codex scans `~/.codex/skills/` at session start, reads `SKILL.md` frontmatter,
-and loads skills on demand. `delivery-flow` becomes visible through this
-symlink:
+Codex scans `~/.agents/skills/` at session start, reads `SKILL.md`
+frontmatter, and loads skills on demand through native skill discovery. The
+shared install surface exposes both controller skills:
 
 ```text
-~/.codex/skills/delivery-flow -> ~/.codex/delivery-flow
+~/.agents/skills/delivery-flow/
+├── delivery-flow/
+│   └── SKILL.md
+└── using-delivery-flow/
+    └── SKILL.md
 ```
+
+- `using-delivery-flow` is the root routing skill
+- `delivery-flow` is the execution skill
+- no `AGENTS.md` file is required
 
 Once installed, the skill exposes one controller contract with two explicit
 modes:
@@ -96,19 +104,29 @@ continuous delivery orchestration, for example:
 - "Use delivery-flow to keep this feature moving through spec, dev, review, and fix."
 - "Run this task with delivery-flow and stop only when owner input is required."
 
-Codex should discover the skill automatically when:
+Codex should discover the skills automatically when:
 
 - you mention `delivery-flow` by name
-- the task matches the `SKILL.md` description
+- you mention `using-delivery-flow` by name
+- the task matches the `SKILL.md` descriptions
 
 ## Verify Installation
 
-Verify the skill entry:
+Verify the skill entries:
 
 ```bash
-test -L ~/.codex/skills/delivery-flow
-readlink -f ~/.codex/skills/delivery-flow
-test -f ~/.codex/skills/delivery-flow/SKILL.md
+test -L ~/.agents/skills/delivery-flow
+ls -l ~/.agents/skills/delivery-flow
+test -f ~/.agents/skills/delivery-flow/delivery-flow/SKILL.md
+test -f ~/.agents/skills/delivery-flow/using-delivery-flow/SKILL.md
+```
+
+On Windows PowerShell:
+
+```powershell
+Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\delivery-flow\SKILL.md"
+Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\using-delivery-flow\SKILL.md"
+Get-Item "$env:USERPROFILE\.agents\skills\delivery-flow"
 ```
 
 Verify the repository baseline:
@@ -152,7 +170,7 @@ metadata.
 ## Uninstalling
 
 ```bash
-rm ~/.codex/skills/delivery-flow
+rm ~/.agents/skills/delivery-flow
 rm -rf ~/.codex/delivery-flow
 ```
 
@@ -160,9 +178,17 @@ rm -rf ~/.codex/delivery-flow
 
 ### Skill not showing up
 
-1. Verify the symlink: `ls -la ~/.codex/skills/delivery-flow`
-2. Check the skill entry exists: `test -f ~/.codex/skills/delivery-flow/SKILL.md`
-3. Restart Codex. Skill discovery happens at session start.
+1. Verify the symlink: `ls -la ~/.agents/skills/delivery-flow`
+2. Check the skill entries exist: `test -f ~/.agents/skills/delivery-flow/delivery-flow/SKILL.md`
+3. Check the routing skill exists: `test -f ~/.agents/skills/delivery-flow/using-delivery-flow/SKILL.md`
+4. Restart Codex. Skill discovery happens at session start.
+
+On Windows PowerShell:
+
+1. Check the install entry: `Get-Item "$env:USERPROFILE\.agents\skills\delivery-flow"`
+2. Check the execution skill: `Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\delivery-flow\SKILL.md"`
+3. Check the routing skill: `Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\using-delivery-flow\SKILL.md"`
+4. Restart Codex.
 
 ### Tests do not run
 

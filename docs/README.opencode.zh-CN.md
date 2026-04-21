@@ -12,7 +12,7 @@
 
 ## 插件会做什么
 
-- 通过 OpenCode 的 `config` hook 注册仓库 worktree 下的 `skills/` 目录
+- 通过 OpenCode 的 `config hook` 注册仓库 worktree 下的 `skills/` 目录
 - 通过 `experimental.chat.system.transform` 注入一段 routing-only bootstrap
 - 让启动路由优先指向 `using-delivery-flow`
 - 保持 bootstrap 只负责路由判断，不内联后续执行语义

@@ -13,7 +13,7 @@ plugin entry.
 
 ## What the Plugin Does
 
-- registers the repository worktree `skills/` directory through the OpenCode `config` hook
+- registers the repository worktree `skills/` directory through the OpenCode `config hook`
 - adds a routing-only bootstrap through `experimental.chat.system.transform`
 - points startup routing at `using-delivery-flow`
 - keeps bootstrap scope limited to route selection instead of downstream execution details
@@ -70,8 +70,8 @@ Do one real OpenCode smoke check in a fresh session:
 What do the using-delivery-flow and delivery-flow skills do in this project?
 ```
 
-Expected result: OpenCode can describe both skills from the repo-local `skills/`
-directory, with `using-delivery-flow` framed as routing-only bootstrap.
+Expected result: OpenCode can describe both skills from the repo-local
+`skills/` directory, with `using-delivery-flow` framed as routing-only bootstrap.
 
 ## Behavior Contract
 

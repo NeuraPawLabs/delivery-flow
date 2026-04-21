@@ -3,12 +3,15 @@
 `delivery-flow` 是一个紧凑的 Codex skill 和控制器约定，用来把单条任务计划持续推进过
 `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`，而不是每一轮都重新断回 owner 手里。
 
-[English README](./README.md) | [Codex 指南](./docs/README.codex.zh-CN.md) | [Codex Guide](./docs/README.codex.md)
+[English README](./README.md) | [Codex 指南](./docs/README.codex.zh-CN.md) | [Claude/Cursor 指南](./docs/README.claude.zh-CN.md) | [OpenCode 指南](./docs/README.opencode.zh-CN.md)
 
 ## 当前状态
 
-- 仓库内已经有真实 skill 入口：`SKILL.md`
-- 本机 skill 安装入口：`~/.codex/skills/delivery-flow`
+- 仓库内保留 legacy 根 skill 入口：`SKILL.md`
+- 共享 skills 位于 `skills/delivery-flow/` 和 `skills/using-delivery-flow/`
+- Codex 安装入口是 `~/.agents/skills/delivery-flow`
+- Claude Code 和 Cursor 通过 `.claude-plugin` 与 `.cursor-plugin` 的 `SessionStart` bootstrap 接管路由
+- OpenCode 会自动加载 `.opencode/plugins/delivery-flow.js`
 - 默认主用路径会直接进入 runtime
 - plan 之后会按 task 逐个推进，直到进入终止态
 - 当前仓库验证基线：`uv run pytest` 成功完成，且全部仓库测试通过
@@ -27,7 +30,9 @@
 - 严格 `pass`：只要还存在 required changes、testing issues 或 maintainability issues，就不能算通过
 - task-loop 证据会暴露完成任务、待处理任务、open issues 和 owner acceptance 状态
 
-## 给 Codex 的快速安装方式
+## 平台安装
+
+### Codex
 
 直接告诉 Codex：
 
@@ -38,15 +43,29 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 使用标准 skill clone 路径手动安装：
 
 ```bash
-mkdir -p ~/.codex/skills
-ln -s ~/.codex/delivery-flow ~/.codex/skills/delivery-flow
+mkdir -p ~/.agents/skills
+ln -s ~/.codex/delivery-flow/skills ~/.agents/skills/delivery-flow
 ```
 
-安装后的 skill 入口：
+共享 skill 结构：
 
 ```text
-~/.codex/skills/delivery-flow/SKILL.md
+~/.agents/skills/delivery-flow/
+├── delivery-flow/
+│   └── SKILL.md
+└── using-delivery-flow/
+    └── SKILL.md
 ```
+
+### Claude Code 和 Cursor
+
+安装插件、重启会话，让平台运行 delivery-flow 的 `SessionStart` bootstrap。
+
+这段 bootstrap 不会替代 skill contract，它只负责把路由前置，让持续交付线程优先进入 `delivery-flow`。
+
+### OpenCode
+
+OpenCode 会把仓库作为 plugin 加载，并自动注册共享 `skills/` 目录。不需要 `AGENTS.md`。
 
 ## 文档导航
 
@@ -62,6 +81,14 @@ ln -s ~/.codex/delivery-flow ~/.codex/skills/delivery-flow
   中文 Codex 安装与使用说明。
 - [docs/README.codex.md](./docs/README.codex.md)
   英文 Codex 安装与使用说明。
+- [docs/README.claude.zh-CN.md](./docs/README.claude.zh-CN.md)
+  中文 Claude Code 与 Cursor 安装说明。
+- [docs/README.claude.md](./docs/README.claude.md)
+  英文 Claude Code 与 Cursor 安装说明。
+- [docs/README.opencode.zh-CN.md](./docs/README.opencode.zh-CN.md)
+  中文 OpenCode 安装与使用说明。
+- [docs/README.opencode.md](./docs/README.opencode.md)
+  英文 OpenCode 安装与使用说明。
 - [.codex/INSTALL.md](./.codex/INSTALL.md)
   给 agent 直接执行的安装文档。
 - [SKILL.md](./SKILL.md)

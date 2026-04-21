@@ -24,13 +24,13 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 
 1. 克隆仓库：
    ```bash
-   git clone git@github.com:NeuraPawLabs/delivery-flow.git ~/.codex/delivery-flow
+   git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/delivery-flow
    ```
 
-2. 创建 skill 软链接：
+2. 创建原生 skill discovery 软链接：
    ```bash
-   mkdir -p ~/.codex/skills
-   ln -s ~/.codex/delivery-flow ~/.codex/skills/delivery-flow
+   mkdir -p ~/.agents/skills
+   ln -s ~/.codex/delivery-flow/skills ~/.agents/skills/delivery-flow
    ```
 
 3. 重启 Codex。
@@ -40,18 +40,27 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 Windows 上可以使用 junction：
 
 ```powershell
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.codex\skills"
-cmd /c mklink /J "$env:USERPROFILE\.codex\skills\delivery-flow" "$env:USERPROFILE\.codex\delivery-flow"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.agents\skills"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills"
 ```
 
 ## 工作方式
 
-Codex 会在会话启动时扫描 `~/.codex/skills/`，读取 `SKILL.md` frontmatter，
-并在需要时按需加载 skill。`delivery-flow` 通过下面这条软链接暴露给 Codex：
+Codex 会在会话启动时扫描 `~/.agents/skills/`，读取 `SKILL.md`
+frontmatter，并通过原生 skill discovery 按需加载 skill。共享安装面会暴露两个
+controller skill：
 
 ```text
-~/.codex/skills/delivery-flow -> ~/.codex/delivery-flow
+~/.agents/skills/delivery-flow/
+├── delivery-flow/
+│   └── SKILL.md
+└── using-delivery-flow/
+    └── SKILL.md
 ```
+
+- `using-delivery-flow` 是根路由 skill
+- `delivery-flow` 是执行 skill
+- 不需要 `AGENTS.md`
 
 安装完成后，这个 skill 提供一条稳定的 controller contract，并支持两个显式 mode：
 
@@ -92,9 +101,10 @@ Codex 会在会话启动时扫描 `~/.codex/skills/`，读取 `SKILL.md` frontma
 - “Use delivery-flow to keep this feature moving through spec, dev, review, and fix.”
 - “Run this task with delivery-flow and stop only when owner input is required.”
 
-Codex 通常会在两种情况下自动发现它：
+Codex 通常会在三种情况下自动发现它们：
 
 - 你直接提到 `delivery-flow`
+- 你直接提到 `using-delivery-flow`
 - 任务描述命中 `SKILL.md` 里的触发条件
 
 ## 安装验证
@@ -102,9 +112,18 @@ Codex 通常会在两种情况下自动发现它：
 验证 skill 入口：
 
 ```bash
-test -L ~/.codex/skills/delivery-flow
-readlink -f ~/.codex/skills/delivery-flow
-test -f ~/.codex/skills/delivery-flow/SKILL.md
+test -L ~/.agents/skills/delivery-flow
+ls -l ~/.agents/skills/delivery-flow
+test -f ~/.agents/skills/delivery-flow/delivery-flow/SKILL.md
+test -f ~/.agents/skills/delivery-flow/using-delivery-flow/SKILL.md
+```
+
+Windows PowerShell 可以用：
+
+```powershell
+Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\delivery-flow\SKILL.md"
+Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\using-delivery-flow\SKILL.md"
+Get-Item "$env:USERPROFILE\.agents\skills\delivery-flow"
 ```
 
 验证仓库基线：
@@ -131,7 +150,7 @@ uv run pytest
 - 如果 owner 在运行中显式修改 execution strategy，新策略从下一个可调度 task 开始生效
 - 一旦 `delivery-flow` 接管 plan 之后的工作流，上游通用模板不得覆盖已确定的 strategy
 - 非终止态 `review` 不是停点：要么进入下一个 task，要么进入 `fix`；`fix` 完成后一定回到 `review`
-- 只要还存在 unresolved required changes、testing issues、maintainability issues，就不能算 `pass`
+- 严格 `pass` 会拒绝 unresolved required changes、testing issues、maintainability issues
 - run trace 记录证据，并生成 owner-visible terminal summary
 - owner 不需要在每个通过的 task 之间手工把阶段重新串起来
 
@@ -147,7 +166,7 @@ uv run pytest
 ## 卸载
 
 ```bash
-rm ~/.codex/skills/delivery-flow
+rm ~/.agents/skills/delivery-flow
 rm -rf ~/.codex/delivery-flow
 ```
 
@@ -155,9 +174,17 @@ rm -rf ~/.codex/delivery-flow
 
 ### Skill 没有被发现
 
-1. 检查软链接：`ls -la ~/.codex/skills/delivery-flow`
-2. 检查 skill 入口：`test -f ~/.codex/skills/delivery-flow/SKILL.md`
-3. 重启 Codex。skill discovery 发生在会话启动时。
+1. 检查软链接：`ls -la ~/.agents/skills/delivery-flow`
+2. 检查执行 skill：`test -f ~/.agents/skills/delivery-flow/delivery-flow/SKILL.md`
+3. 检查路由 skill：`test -f ~/.agents/skills/delivery-flow/using-delivery-flow/SKILL.md`
+4. 重启 Codex。skill discovery 发生在会话启动时。
+
+Windows PowerShell 可以用：
+
+1. 检查安装入口：`Get-Item "$env:USERPROFILE\.agents\skills\delivery-flow"`
+2. 检查执行 skill：`Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\delivery-flow\SKILL.md"`
+3. 检查路由 skill：`Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\using-delivery-flow\SKILL.md"`
+4. 重启 Codex。
 
 ### 测试跑不起来
 

@@ -4,12 +4,15 @@
 plan moving through `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
 without handing the loop back to the owner after each stage.
 
-[中文文档](./README.zh-CN.md) | [Codex Guide](./docs/README.codex.md) | [Codex 中文指南](./docs/README.codex.zh-CN.md)
+[中文文档](./README.zh-CN.md) | [Codex Guide](./docs/README.codex.md) | [Claude/Cursor Guide](./docs/README.claude.md) | [OpenCode Guide](./docs/README.opencode.md)
 
 ## Status
 
-- skill entrypoint exists at `SKILL.md`
-- local skill install path is `~/.codex/skills/delivery-flow`
+- legacy root skill entrypoint exists at `SKILL.md`
+- shared skills live under `skills/delivery-flow/` and `skills/using-delivery-flow/`
+- Codex install path is `~/.agents/skills/delivery-flow`
+- Claude Code and Cursor use `SessionStart` bootstrap via `.claude-plugin` and `.cursor-plugin`
+- OpenCode auto-loads `.opencode/plugins/delivery-flow.js`
 - default-use path enters the runtime directly
 - post-plan execution stays task-by-task until a terminal stop
 - repository verification baseline is `uv run pytest`, completes successfully, and all repository tests pass
@@ -28,7 +31,9 @@ without handing the loop back to the owner after each stage.
 - strict `pass`: unresolved required changes, testing issues, or maintainability issues keep the task open
 - task-loop evidence: completed task, pending task, open issues, and owner acceptance state
 
-## Quick Install For Codex
+## Platform Install
+
+### Codex
 
 Tell Codex:
 
@@ -39,15 +44,32 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 Manual install from the standard skill clone path:
 
 ```bash
-mkdir -p ~/.codex/skills
-ln -s ~/.codex/delivery-flow ~/.codex/skills/delivery-flow
+mkdir -p ~/.agents/skills
+ln -s ~/.codex/delivery-flow/skills ~/.agents/skills/delivery-flow
 ```
 
-Local skill entrypoint:
+Shared skill surface:
 
 ```text
-~/.codex/skills/delivery-flow/SKILL.md
+~/.agents/skills/delivery-flow/
+├── delivery-flow/
+│   └── SKILL.md
+└── using-delivery-flow/
+    └── SKILL.md
 ```
+
+### Claude Code and Cursor
+
+Install the plugin, restart the session, and let the platform run the
+delivery-flow `SessionStart` bootstrap.
+
+The bootstrap does not replace the skill contract. It only front-loads routing
+so ongoing delivery threads can prefer `delivery-flow`.
+
+### OpenCode
+
+OpenCode installs the repository as a plugin and registers the shared `skills/`
+directory automatically. No `AGENTS.md` is required.
 
 ## Documentation
 
@@ -61,6 +83,14 @@ Local skill entrypoint:
   Codex install and usage guide.
 - [docs/README.codex.zh-CN.md](./docs/README.codex.zh-CN.md)
   Chinese Codex install and usage guide.
+- [docs/README.claude.md](./docs/README.claude.md)
+  Claude Code and Cursor install guide.
+- [docs/README.claude.zh-CN.md](./docs/README.claude.zh-CN.md)
+  Chinese Claude Code and Cursor install guide.
+- [docs/README.opencode.md](./docs/README.opencode.md)
+  OpenCode install and usage guide.
+- [docs/README.opencode.zh-CN.md](./docs/README.opencode.zh-CN.md)
+  Chinese OpenCode install and usage guide.
 - [.codex/INSTALL.md](./.codex/INSTALL.md)
   Agent-facing install instructions for Codex raw fetch flows.
 - [SKILL.md](./SKILL.md)
