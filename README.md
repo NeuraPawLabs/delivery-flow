@@ -95,12 +95,8 @@ directory automatically. No `AGENTS.md` is required.
   AI-facing execution skill contract.
 - [skills/delivery-flow/selection-contract.md](./skills/delivery-flow/selection-contract.md)
   Selection-time supporting contract for `delivery-flow`.
-- [skills/delivery-flow/selection-contract.zh-CN.md](./skills/delivery-flow/selection-contract.zh-CN.md)
-  Chinese selection-time supporting contract.
 - [skills/delivery-flow/router-contract.md](./skills/delivery-flow/router-contract.md)
   Router-first supporting contract.
-- [skills/delivery-flow/router-contract.zh-CN.md](./skills/delivery-flow/router-contract.zh-CN.md)
-  Chinese router-first supporting contract.
 - [skills/delivery-flow/superpowers-backed.md](./skills/delivery-flow/superpowers-backed.md)
   `superpowers-backed` supporting backend contract.
 - [skills/delivery-flow/fallback.md](./skills/delivery-flow/fallback.md)

@@ -162,7 +162,6 @@ def test_platform_docs_cover_bootstrap_install_paths() -> None:
 
 def test_selection_contract_doc_locks_selection_precedence_rules() -> None:
     selection_doc = _read("skills/delivery-flow/selection-contract.md")
-    selection_doc_zh = _read("skills/delivery-flow/selection-contract.zh-CN.md")
 
     _assert_mentions(
         selection_doc,
@@ -177,24 +176,10 @@ def test_selection_contract_doc_locks_selection_precedence_rules() -> None:
         "executing-plans",
         "subordinate workflows",
     )
-    _assert_mentions(
-        selection_doc_zh,
-        "顶层 orchestrator",
-        "即使已经有 plan",
-        "持续交付线程",
-        "优先 `delivery-flow`",
-        "review/fix",
-        "不能仅因为 planning 完成就切换",
-        "brainstorming",
-        "writing-plans",
-        "executing-plans",
-        "从属 workflow",
-    )
 
 
 def test_router_contract_docs_lock_router_first_take_ownership_and_yield_rules() -> None:
     router_doc = _read("skills/delivery-flow/router-contract.md")
-    router_doc_zh = _read("skills/delivery-flow/router-contract.zh-CN.md")
 
     _assert_mentions(
         router_doc,
@@ -205,16 +190,6 @@ def test_router_contract_docs_lock_router_first_take_ownership_and_yield_rules()
         "do not re-route on every internal phase boundary",
         "ongoing delivery thread",
         "single phase",
-    )
-    _assert_mentions(
-        router_doc_zh,
-        "router-first",
-        "接管",
-        "让行",
-        "每个新的用户回合",
-        "不要在每个内部阶段边界重判",
-        "持续交付线程",
-        "单一阶段",
     )
 
 
@@ -279,7 +254,6 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     _assert_mentions(readme_zh, "delivery-flow", "spec", "plan", "dev", "review", "fix")
     _assert_mentions(readme_zh, "superpowers-backed", "fallback", "subagents")
     _assert_mentions(readme_zh, "execution_strategy", "subagent-driven", "inline", "unresolved")
-    _assert_mentions(readme_zh, "selection-contract.zh-cn.md")
     _assert_mentions(
         readme_zh,
         "询问一次",
@@ -317,8 +291,6 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     _assert_markdown_link(readme_zh, "./docs/platforms/codex.zh-CN.md")
     _assert_markdown_link(readme_zh, "./docs/platforms/claude.zh-CN.md")
     _assert_markdown_link(readme_zh, "./docs/platforms/opencode.zh-CN.md")
-    _assert_markdown_link(readme_zh, "./skills/delivery-flow/selection-contract.zh-CN.md")
-    _assert_markdown_link(readme_zh, "./skills/delivery-flow/router-contract.zh-CN.md")
     _assert_markdown_link(readme_zh, "./skills/delivery-flow/superpowers-backed.md")
     _assert_markdown_link(readme_zh, "./skills/delivery-flow/fallback.md")
     _assert_markdown_link(readme_zh, "./skills/delivery-flow/verification-scenarios.md")

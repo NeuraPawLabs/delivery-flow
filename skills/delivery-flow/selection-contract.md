@@ -1,7 +1,5 @@
 # Delivery-Flow Selection Contract
 
-[简体中文](./selection-contract.zh-CN.md)
-
 This document defines the selection-time contract for `delivery-flow`.
 
 ## Top-Level Role
