@@ -4,8 +4,8 @@ Use these scenarios to check that the skill still shapes behavior correctly.
 
 ## Scenario 1: Discovery Works
 
-- install the skill through `~/.codex/skills/delivery-flow`
-- expect `SKILL.md` to exist at the linked path
+- install the shared skills through `~/.agents/skills/delivery-flow`
+- expect `delivery-flow/SKILL.md` and `using-delivery-flow/SKILL.md` to exist at the linked path
 - expect Codex to discover the skill on a fresh session start
 
 ## Scenario 2: Activation Works

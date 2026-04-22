@@ -286,6 +286,18 @@ def test_skill_frontmatter_declares_neighbor_skills_as_stage_specific_or_subordi
 
 def test_shared_skill_surface_exists() -> None:
     assert (REPO_ROOT / "skills" / "delivery-flow" / "SKILL.md").is_file()
+    assert (REPO_ROOT / "skills" / "using-delivery-flow" / "SKILL.md").is_file()
+
+
+def test_codex_shared_install_surface_exposes_both_skills(tmp_path: Path) -> None:
+    install_root = tmp_path / ".agents" / "skills"
+    install_root.mkdir(parents=True)
+    install_path = install_root / "delivery-flow"
+    install_path.symlink_to(REPO_ROOT / "skills", target_is_directory=True)
+
+    assert install_path.is_symlink()
+    assert (install_path / "delivery-flow" / "SKILL.md").is_file()
+    assert (install_path / "using-delivery-flow" / "SKILL.md").is_file()
 
 
 def test_using_delivery_flow_is_a_root_routing_skill() -> None:

@@ -7,16 +7,19 @@
 ## 快速开始
 
 1. 在 Claude Code 或 Cursor 中打开这个仓库。
-2. 从 `.claude-plugin` 或 `.cursor-plugin` 安装插件。
+2. 把整个仓库作为插件包安装，这样根目录下的 `.claude-plugin`、
+   `.cursor-plugin`、`hooks/` 和 `skills/` 路径才能保持有效。
 3. 重启会话，让 `SessionStart` 再执行一次。
 
 ## 安装内容
 
+- 仓库根目录本身就是 Claude Code 和 Cursor 的安装面
 - `.claude-plugin/plugin.json` 提供 Claude Code 的插件元数据
 - `.cursor-plugin/plugin.json` 提供 Cursor 的插件元数据
 - `hooks/hooks.json` 负责 Claude Code 的 `SessionStart`
 - `hooks/hooks-cursor.json` 负责 Cursor 的 `sessionStart`
 - `hooks/session-start` 会输出一段指向 `using-delivery-flow` 的路由 bootstrap
+- `skills/` 会作为共享 skill 目录保留在安装根目录
 
 ## Bootstrap 合约
 

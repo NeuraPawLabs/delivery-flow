@@ -8,16 +8,20 @@ repository plugin manifests and `SessionStart` bootstrap hooks.
 ## Quick Start
 
 1. Open this repository in Claude Code or Cursor.
-2. Install the plugin from `.claude-plugin` or `.cursor-plugin`.
+2. Install this repository as the plugin package so the root-relative
+   `.claude-plugin`, `.cursor-plugin`, `hooks/`, and `skills/` paths stay
+   intact.
 3. Restart the session so `SessionStart` runs again.
 
 ## What Gets Installed
 
+- the repository root is the install surface for Claude Code and Cursor
 - `.claude-plugin/plugin.json` exposes the Claude Code plugin metadata
 - `.cursor-plugin/plugin.json` exposes the Cursor plugin metadata
 - `hooks/hooks.json` wires Claude Code `SessionStart`
 - `hooks/hooks-cursor.json` wires Cursor `sessionStart`
 - `hooks/session-start` emits a routing-focused bootstrap that points at `using-delivery-flow`
+- `skills/` stays available at the install root for shared skill discovery
 
 ## Bootstrap Contract
 

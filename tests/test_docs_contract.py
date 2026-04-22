@@ -141,6 +141,9 @@ def test_platform_docs_cover_bootstrap_install_paths() -> None:
         ".cursor-plugin",
         "bootstrap",
         "routing-only",
+        "install this repository as the plugin package",
+        "repository root is the install surface",
+        "skills/",
         "does not replace the `delivery-flow` skill contract",
         "ongoing delivery threads can prefer `delivery-flow`",
     )
@@ -390,6 +393,9 @@ def test_platform_docs_have_zh_cn_parity() -> None:
         ".cursor-plugin",
         "bootstrap",
         "routing-only",
+        "整个仓库作为插件包安装",
+        "仓库根目录本身就是 claude code 和 cursor 的安装面",
+        "skills/",
         "不会替代 `delivery-flow` 的 skill contract",
         "持续交付线程优先进入 `delivery-flow`",
     )
@@ -411,6 +417,9 @@ def test_verification_scenarios_cover_execution_strategy_edges() -> None:
 
     _assert_mentions(
         scenarios_doc,
+        "~/.agents/skills/delivery-flow",
+        "delivery-flow/skill.md",
+        "using-delivery-flow/skill.md",
         "execution strategy",
         "one post-plan execution-strategy question",
         "no repeated execution-choice question",

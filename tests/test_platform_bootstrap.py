@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
+
+import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -51,6 +54,9 @@ def _run_session_start(**env_updates: str) -> dict[str, object]:
 
 
 def _run_node_json(script: str) -> dict[str, object]:
+    if shutil.which("node") is None:
+        pytest.skip("node is required for OpenCode plugin contract checks")
+
     result = subprocess.run(
         ["node", "--input-type=module", "--eval", script],
         cwd=REPO_ROOT,
