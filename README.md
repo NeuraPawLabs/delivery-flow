@@ -8,8 +8,7 @@ without handing the loop back to the owner after each stage.
 
 ## Status
 
-- legacy root skill entrypoint exists at `SKILL.md`
-- shared skills live under `skills/delivery-flow/` and `skills/using-delivery-flow/`
+- official skill entrypoints live under `skills/delivery-flow/` and `skills/using-delivery-flow/`
 - Codex install path is `~/.agents/skills/delivery-flow`
 - Claude Code and Cursor use `SessionStart` bootstrap via `.claude-plugin` and `.cursor-plugin`
 - OpenCode auto-loads `.opencode/plugins/delivery-flow.js`
@@ -93,13 +92,15 @@ directory automatically. No `AGENTS.md` is required.
   Chinese OpenCode install and usage guide.
 - [.codex/INSTALL.md](./.codex/INSTALL.md)
   Agent-facing install instructions for Codex raw fetch flows.
-- [SKILL.md](./SKILL.md)
-  Skill contract loaded by Codex.
+- [skills/delivery-flow/SKILL.md](./skills/delivery-flow/SKILL.md)
+  Execution skill contract.
+- [skills/using-delivery-flow/SKILL.md](./skills/using-delivery-flow/SKILL.md)
+  Root routing skill contract.
 
 ## Repository Layout
 
-- `SKILL.md`
-  Main skill entrypoint.
+- `skills/`
+  Official shared skill entrypoints for installation and discovery.
 - `src/delivery_flow/controller.py`
   Controller contract helpers and public runtime launcher.
 - `src/delivery_flow/runtime/`

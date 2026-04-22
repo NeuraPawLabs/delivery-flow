@@ -11,7 +11,7 @@ Use these scenarios to check that the skill still shapes behavior correctly.
 ## Scenario 2: Activation Works
 
 - start one session that names `delivery-flow` explicitly
-- start one session whose task clearly matches the `SKILL.md` description
+- start one session whose task clearly matches the shared skill descriptions in `skills/delivery-flow/SKILL.md` or `skills/using-delivery-flow/SKILL.md`
 - expect the skill to be selected in both cases
 
 ## Scenario 2A: New Feature, No Ongoing Thread

@@ -230,21 +230,22 @@ def _resume_mode(
 
 
 def test_discovery_prerequisites_are_executable_locally(tmp_path: Path) -> None:
-    skill_doc = _read("SKILL.md")
+    skill_doc = _read("skills/delivery-flow/SKILL.md")
 
     assert _frontmatter_value(skill_doc, "name") == "delivery-flow"
 
-    skills_dir = tmp_path / ".codex" / "skills"
+    skills_dir = tmp_path / ".agents" / "skills"
     skills_dir.mkdir(parents=True)
     install_path = skills_dir / "delivery-flow"
-    install_path.symlink_to(REPO_ROOT, target_is_directory=True)
+    install_path.symlink_to(REPO_ROOT / "skills", target_is_directory=True)
 
     assert install_path.is_symlink()
-    assert (install_path / "SKILL.md").is_file()
+    assert (install_path / "delivery-flow" / "SKILL.md").is_file()
+    assert (install_path / "using-delivery-flow" / "SKILL.md").is_file()
 
 
 def test_activation_prerequisites_align_skill_metadata_with_documented_trigger_paths() -> None:
-    skill_doc = _read("SKILL.md")
+    skill_doc = _read("skills/delivery-flow/SKILL.md")
     codex_doc = _read("docs/README.codex.md")
     codex_doc_zh = _read("docs/README.codex.zh-CN.md")
 
@@ -259,7 +260,7 @@ def test_activation_prerequisites_align_skill_metadata_with_documented_trigger_p
 
 
 def test_skill_frontmatter_declares_top_level_process_role_for_ongoing_delivery_threads() -> None:
-    description = _normalized(_frontmatter_value(_read("SKILL.md"), "description"))
+    description = _normalized(_frontmatter_value(_read("skills/delivery-flow/SKILL.md"), "description"))
 
     assert "top-level process skill" in description
     assert "ongoing delivery thread" in description
@@ -267,7 +268,7 @@ def test_skill_frontmatter_declares_top_level_process_role_for_ongoing_delivery_
 
 
 def test_skill_frontmatter_declares_existing_plan_and_review_feedback_do_not_disqualify_delivery_flow() -> None:
-    description = _normalized(_frontmatter_value(_read("SKILL.md"), "description"))
+    description = _normalized(_frontmatter_value(_read("skills/delivery-flow/SKILL.md"), "description"))
 
     assert "even if a plan already exists" in description
     assert "review feedback" in description
@@ -275,7 +276,7 @@ def test_skill_frontmatter_declares_existing_plan_and_review_feedback_do_not_dis
 
 
 def test_skill_frontmatter_declares_neighbor_skills_as_stage_specific_or_subordinate() -> None:
-    description = _normalized(_frontmatter_value(_read("SKILL.md"), "description"))
+    description = _normalized(_frontmatter_value(_read("skills/delivery-flow/SKILL.md"), "description"))
 
     assert "stage-specific or subordinate" in description
     assert "receiving-code-review" in description
@@ -300,6 +301,10 @@ def test_codex_shared_install_surface_exposes_both_skills(tmp_path: Path) -> Non
     assert (install_path / "using-delivery-flow" / "SKILL.md").is_file()
 
 
+def test_root_skill_entrypoint_is_removed() -> None:
+    assert not (REPO_ROOT / "SKILL.md").exists()
+
+
 def test_using_delivery_flow_is_a_root_routing_skill() -> None:
     routing_doc = _read("skills/using-delivery-flow/SKILL.md")
     description = _normalized(_frontmatter_value(routing_doc, "description"))
@@ -320,42 +325,9 @@ def test_using_delivery_flow_is_a_root_routing_skill() -> None:
         assert marker in body
 
 
-def test_legacy_root_skill_remains_available() -> None:
-    legacy_doc = _read("SKILL.md")
-
-    assert _frontmatter_value(legacy_doc, "name") == "delivery-flow"
-    _assert_matches(legacy_doc, r"legacy execution entrypoint")
-
-
-def test_legacy_root_skill_stays_synchronized_with_shared_execution_skill_except_installation_note() -> None:
-    legacy_doc = _read("SKILL.md")
-    shared_doc = _read("skills/delivery-flow/SKILL.md")
-
-    assert _frontmatter_value(legacy_doc, "name") == _frontmatter_value(shared_doc, "name")
-    assert _frontmatter_value(legacy_doc, "description") == _frontmatter_value(shared_doc, "description")
-
-    legacy_headings = [heading for heading in _section_headings(legacy_doc) if heading != "Installation Note"]
-    shared_headings = _section_headings(shared_doc)
-    assert legacy_headings == shared_headings
-
-    for heading in shared_headings:
-        assert _section_body(legacy_doc, heading) == _section_body(shared_doc, heading)
-
-
-def test_legacy_root_skill_preserves_root_only_installation_note_markers() -> None:
-    installation_note = _section_body(_read("SKILL.md"), "Installation Note")
-
-    for marker in (
-        "shared execution skill for new installs",
-        "shared root routing skill",
-        "legacy execution entrypoint for repo-root codex installs",
-    ):
-        assert marker in _normalized(installation_note)
-
-
 def test_skill_doc_declares_selection_priority_and_neighbor_skill_markers() -> None:
-    selection_priority = _section_body(_read("SKILL.md"), "Selection Priority")
-    relationship = _section_body(_read("SKILL.md"), "Relationship To Other Process Skills")
+    selection_priority = _section_body(_read("skills/delivery-flow/SKILL.md"), "Selection Priority")
+    relationship = _section_body(_read("skills/delivery-flow/SKILL.md"), "Relationship To Other Process Skills")
 
     for marker in (
         "top-level orchestrator for an ongoing delivery thread",
@@ -375,7 +347,7 @@ def test_skill_doc_declares_selection_priority_and_neighbor_skill_markers() -> N
 
 
 def test_skill_doc_declares_routing_contract_via_sections_and_markers() -> None:
-    skill_doc = _read("SKILL.md")
+    skill_doc = _read("skills/delivery-flow/SKILL.md")
     routing_decision = _section_body(skill_doc, "Routing Decision")
     when_to_take_ownership = _section_body(skill_doc, "When To Take Ownership")
     when_to_yield = _section_body(skill_doc, "When To Yield")

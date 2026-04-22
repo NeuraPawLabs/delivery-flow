@@ -33,7 +33,7 @@ def _assert_markdown_link(doc: str, target: str) -> None:
 
 
 def test_skill_doc_keeps_core_task_loop_contract() -> None:
-    skill_doc = _read("SKILL.md")
+    skill_doc = _read("skills/delivery-flow/SKILL.md")
 
     _assert_mentions(skill_doc, "name: delivery-flow")
     _assert_mentions(skill_doc, "dev", "review", "fix", "finalize", "wait")
@@ -258,6 +258,8 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     _assert_markdown_link(readme, "./docs/README.codex.md")
     _assert_markdown_link(readme, "./docs/README.claude.md")
     _assert_markdown_link(readme, "./docs/README.opencode.md")
+    _assert_markdown_link(readme, "./skills/delivery-flow/SKILL.md")
+    _assert_markdown_link(readme, "./skills/using-delivery-flow/SKILL.md")
     _assert_mentions(readme, "required changes", "testing issues", "maintainability issues")
     _assert_verification_markers(
         readme,
@@ -302,6 +304,8 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     _assert_markdown_link(readme_zh, "./docs/README.codex.zh-CN.md")
     _assert_markdown_link(readme_zh, "./docs/README.claude.zh-CN.md")
     _assert_markdown_link(readme_zh, "./docs/README.opencode.zh-CN.md")
+    _assert_markdown_link(readme_zh, "./skills/delivery-flow/SKILL.md")
+    _assert_markdown_link(readme_zh, "./skills/using-delivery-flow/SKILL.md")
     _assert_mentions(readme_zh, "required changes", "testing issues", "maintainability issues")
     _assert_verification_markers(
         readme_zh,
