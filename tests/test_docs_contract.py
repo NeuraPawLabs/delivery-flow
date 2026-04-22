@@ -57,8 +57,8 @@ def test_skill_doc_keeps_core_task_loop_contract() -> None:
 
 
 def test_backend_docs_keep_mode_and_review_smoke() -> None:
-    superpowers_doc = _read("superpowers-backed.md")
-    fallback_doc = _read("fallback.md")
+    superpowers_doc = _read("docs/contracts/superpowers-backed.md")
+    fallback_doc = _read("docs/contracts/fallback.md")
 
     _assert_mentions(superpowers_doc, "superpowers", "dev", "review", "fix", "subagents")
     _assert_mentions(superpowers_doc, "normalized", "pass", "blocker", "needs_owner_decision")
@@ -161,8 +161,8 @@ def test_platform_docs_cover_bootstrap_install_paths() -> None:
 
 
 def test_selection_contract_doc_locks_selection_precedence_rules() -> None:
-    selection_doc = _read("selection-contract.md")
-    selection_doc_zh = _read("selection-contract.zh-CN.md")
+    selection_doc = _read("docs/contracts/selection-contract.md")
+    selection_doc_zh = _read("docs/contracts/selection-contract.zh-CN.md")
 
     _assert_mentions(
         selection_doc,
@@ -193,8 +193,8 @@ def test_selection_contract_doc_locks_selection_precedence_rules() -> None:
 
 
 def test_router_contract_docs_lock_router_first_take_ownership_and_yield_rules() -> None:
-    router_doc = _read("router-contract.md")
-    router_doc_zh = _read("router-contract.zh-CN.md")
+    router_doc = _read("docs/contracts/router-contract.md")
+    router_doc_zh = _read("docs/contracts/router-contract.zh-CN.md")
 
     _assert_mentions(
         router_doc,
@@ -258,6 +258,11 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     _assert_markdown_link(readme, "./docs/README.codex.md")
     _assert_markdown_link(readme, "./docs/README.claude.md")
     _assert_markdown_link(readme, "./docs/README.opencode.md")
+    _assert_markdown_link(readme, "./docs/contracts/selection-contract.md")
+    _assert_markdown_link(readme, "./docs/contracts/router-contract.md")
+    _assert_markdown_link(readme, "./docs/contracts/superpowers-backed.md")
+    _assert_markdown_link(readme, "./docs/contracts/fallback.md")
+    _assert_markdown_link(readme, "./docs/verification/verification-scenarios.md")
     _assert_markdown_link(readme, "./skills/delivery-flow/SKILL.md")
     _assert_markdown_link(readme, "./skills/using-delivery-flow/SKILL.md")
     _assert_mentions(readme, "required changes", "testing issues", "maintainability issues")
@@ -304,6 +309,11 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     _assert_markdown_link(readme_zh, "./docs/README.codex.zh-CN.md")
     _assert_markdown_link(readme_zh, "./docs/README.claude.zh-CN.md")
     _assert_markdown_link(readme_zh, "./docs/README.opencode.zh-CN.md")
+    _assert_markdown_link(readme_zh, "./docs/contracts/selection-contract.zh-CN.md")
+    _assert_markdown_link(readme_zh, "./docs/contracts/router-contract.zh-CN.md")
+    _assert_markdown_link(readme_zh, "./docs/contracts/superpowers-backed.md")
+    _assert_markdown_link(readme_zh, "./docs/contracts/fallback.md")
+    _assert_markdown_link(readme_zh, "./docs/verification/verification-scenarios.md")
     _assert_markdown_link(readme_zh, "./skills/delivery-flow/SKILL.md")
     _assert_markdown_link(readme_zh, "./skills/using-delivery-flow/SKILL.md")
     _assert_mentions(readme_zh, "required changes", "testing issues", "maintainability issues")
@@ -417,7 +427,7 @@ def test_platform_docs_have_zh_cn_parity() -> None:
 
 
 def test_verification_scenarios_cover_execution_strategy_edges() -> None:
-    scenarios_doc = _read("verification-scenarios.md")
+    scenarios_doc = _read("docs/verification/verification-scenarios.md")
 
     _assert_mentions(
         scenarios_doc,
@@ -449,3 +459,9 @@ def test_verification_scenarios_cover_execution_strategy_edges() -> None:
         "next user turn",
         "no re-routing on every internal phase boundary",
     )
+
+
+def test_root_markdown_surface_is_readme_only() -> None:
+    root_markdown_files = sorted(path.name for path in REPO_ROOT.glob("*.md"))
+
+    assert root_markdown_files == ["README.md", "README.zh-CN.md"]

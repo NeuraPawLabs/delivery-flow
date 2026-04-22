@@ -73,29 +73,39 @@ directory automatically. No `AGENTS.md` is required.
 ## Documentation
 
 - [README.zh-CN](./README.zh-CN.md)
-  Chinese overview.
-- [selection-contract.md](./selection-contract.md)
-  Selection-time contract and precedence rules.
-- [router-contract.md](./router-contract.md)
-  Router-first take-ownership and yield rules.
+  Chinese human overview.
 - [docs/README.codex.md](./docs/README.codex.md)
-  Codex install and usage guide.
+  Human-facing Codex install and usage guide.
 - [docs/README.codex.zh-CN.md](./docs/README.codex.zh-CN.md)
-  Chinese Codex install and usage guide.
+  Chinese human-facing Codex install and usage guide.
 - [docs/README.claude.md](./docs/README.claude.md)
-  Claude Code and Cursor install guide.
+  Human-facing Claude Code and Cursor install guide.
 - [docs/README.claude.zh-CN.md](./docs/README.claude.zh-CN.md)
-  Chinese Claude Code and Cursor install guide.
+  Chinese human-facing Claude Code and Cursor install guide.
 - [docs/README.opencode.md](./docs/README.opencode.md)
-  OpenCode install and usage guide.
+  Human-facing OpenCode install and usage guide.
 - [docs/README.opencode.zh-CN.md](./docs/README.opencode.zh-CN.md)
-  Chinese OpenCode install and usage guide.
+  Chinese human-facing OpenCode install and usage guide.
+- [docs/contracts/selection-contract.md](./docs/contracts/selection-contract.md)
+  Selection-time contract and precedence rules.
+- [docs/contracts/selection-contract.zh-CN.md](./docs/contracts/selection-contract.zh-CN.md)
+  Chinese selection-time contract.
+- [docs/contracts/router-contract.md](./docs/contracts/router-contract.md)
+  Router-first take-ownership and yield rules.
+- [docs/contracts/router-contract.zh-CN.md](./docs/contracts/router-contract.zh-CN.md)
+  Chinese router-first contract.
+- [docs/contracts/superpowers-backed.md](./docs/contracts/superpowers-backed.md)
+  `superpowers-backed` backend contract.
+- [docs/contracts/fallback.md](./docs/contracts/fallback.md)
+  `fallback` backend contract.
+- [docs/verification/verification-scenarios.md](./docs/verification/verification-scenarios.md)
+  Verification scenarios for discovery, routing, and execution behavior.
 - [.codex/INSTALL.md](./.codex/INSTALL.md)
   Agent-facing install instructions for Codex raw fetch flows.
 - [skills/delivery-flow/SKILL.md](./skills/delivery-flow/SKILL.md)
-  Execution skill contract.
+  AI-facing execution skill contract.
 - [skills/using-delivery-flow/SKILL.md](./skills/using-delivery-flow/SKILL.md)
-  Root routing skill contract.
+  AI-facing root routing skill contract.
 
 ## Repository Layout
 
@@ -109,16 +119,10 @@ directory automatically. No `AGENTS.md` is required.
   Run trace and terminal evidence holder.
 - `src/delivery_flow/adapters/`
   Runtime-facing `superpowers-backed` and `fallback` adapters.
-- `superpowers-backed.md`
-  Preferred backend contract.
-- `fallback.md`
-  Fallback backend contract.
-- `verification-scenarios.md`
-  Dual-mode consistency scenarios.
-- `selection-contract.md`
-  Selection boundary and precedence contract.
-- `router-contract.md`
-  Router-first take-ownership and yield contract.
+- `docs/contracts/`
+  Selection, routing, and backend contracts for humans and tests.
+- `docs/verification/`
+  Verification scenarios and behavioral smoke references.
 - `tests/`
   Repository verification baseline.
 

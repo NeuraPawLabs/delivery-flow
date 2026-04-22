@@ -108,6 +108,9 @@ skills directory.
 
 For a fuller guide, see `docs/README.codex.md` in the repository.
 
+Human-readable contract references live under `docs/contracts/` and
+`docs/verification/`. AI-facing skill entrypoints remain under `skills/`.
+
 ## Uninstalling
 
 ```bash

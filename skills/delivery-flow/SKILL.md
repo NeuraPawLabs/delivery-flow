@@ -136,9 +136,9 @@ Silent fallback is forbidden.
 
 ## Supporting Docs
 
-- `superpowers-backed.md`
-- `fallback.md`
-- `verification-scenarios.md`
+- `../../docs/contracts/superpowers-backed.md`
+- `../../docs/contracts/fallback.md`
+- `../../docs/verification/verification-scenarios.md`
 
 ## Quick Reference
 
