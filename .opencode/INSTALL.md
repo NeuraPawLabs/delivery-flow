@@ -42,5 +42,5 @@ Expected result:
 
 ## Docs
 
-- `docs/README.opencode.md`
-- `docs/README.opencode.zh-CN.md`
+- `docs/platforms/opencode.md`
+- `docs/platforms/opencode.zh-CN.md`

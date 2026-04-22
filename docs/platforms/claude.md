@@ -1,6 +1,6 @@
 # Delivery Flow for Claude Code and Cursor
 
-[English](README.claude.md) | [简体中文](README.claude.zh-CN.md)
+[English](./claude.md) | [简体中文](./claude.zh-CN.md)
 
 Guide for using `delivery-flow` with Claude Code and Cursor through the
 repository plugin manifests and `SessionStart` bootstrap hooks.

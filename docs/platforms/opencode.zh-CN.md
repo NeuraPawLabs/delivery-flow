@@ -2,7 +2,7 @@
 
 这是给 OpenCode 使用者看的安装与使用说明。
 
-[English Version](./README.opencode.md)
+[English Version](./opencode.md)
 
 ## 快速开始
 

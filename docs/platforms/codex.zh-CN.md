@@ -2,7 +2,7 @@
 
 这是给 Codex agent 看的中文安装与使用说明。
 
-[English Version](./README.codex.md) | [项目主页](../README.zh-CN.md)
+[English Version](./codex.md) | [项目主页](../../README.zh-CN.md)
 
 ## 快速安装
 

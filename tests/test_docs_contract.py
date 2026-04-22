@@ -57,8 +57,8 @@ def test_skill_doc_keeps_core_task_loop_contract() -> None:
 
 
 def test_backend_docs_keep_mode_and_review_smoke() -> None:
-    superpowers_doc = _read("docs/contracts/superpowers-backed.md")
-    fallback_doc = _read("docs/contracts/fallback.md")
+    superpowers_doc = _read("docs/skills/delivery-flow/superpowers-backed.md")
+    fallback_doc = _read("docs/skills/delivery-flow/fallback.md")
 
     _assert_mentions(superpowers_doc, "superpowers", "dev", "review", "fix", "subagents")
     _assert_mentions(superpowers_doc, "normalized", "pass", "blocker", "needs_owner_decision")
@@ -114,9 +114,9 @@ def test_codex_install_docs_cover_discovery_install_and_verification() -> None:
 
 def test_platform_docs_cover_bootstrap_install_paths() -> None:
     codex_install = _read(".codex/INSTALL.md")
-    readme_codex = _read("docs/README.codex.md")
-    readme_claude = _read("docs/README.claude.md")
-    readme_opencode = _read("docs/README.opencode.md")
+    readme_codex = _read("docs/platforms/codex.md")
+    readme_claude = _read("docs/platforms/claude.md")
+    readme_opencode = _read("docs/platforms/opencode.md")
 
     _assert_mentions(
         codex_install,
@@ -161,8 +161,8 @@ def test_platform_docs_cover_bootstrap_install_paths() -> None:
 
 
 def test_selection_contract_doc_locks_selection_precedence_rules() -> None:
-    selection_doc = _read("docs/contracts/selection-contract.md")
-    selection_doc_zh = _read("docs/contracts/selection-contract.zh-CN.md")
+    selection_doc = _read("docs/skills/delivery-flow/selection-contract.md")
+    selection_doc_zh = _read("docs/skills/delivery-flow/selection-contract.zh-CN.md")
 
     _assert_mentions(
         selection_doc,
@@ -193,8 +193,8 @@ def test_selection_contract_doc_locks_selection_precedence_rules() -> None:
 
 
 def test_router_contract_docs_lock_router_first_take_ownership_and_yield_rules() -> None:
-    router_doc = _read("docs/contracts/router-contract.md")
-    router_doc_zh = _read("docs/contracts/router-contract.zh-CN.md")
+    router_doc = _read("docs/skills/delivery-flow/router-contract.md")
+    router_doc_zh = _read("docs/skills/delivery-flow/router-contract.zh-CN.md")
 
     _assert_mentions(
         router_doc,
@@ -255,14 +255,14 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
         "take ownership",
         "yield",
     )
-    _assert_markdown_link(readme, "./docs/README.codex.md")
-    _assert_markdown_link(readme, "./docs/README.claude.md")
-    _assert_markdown_link(readme, "./docs/README.opencode.md")
-    _assert_markdown_link(readme, "./docs/contracts/selection-contract.md")
-    _assert_markdown_link(readme, "./docs/contracts/router-contract.md")
-    _assert_markdown_link(readme, "./docs/contracts/superpowers-backed.md")
-    _assert_markdown_link(readme, "./docs/contracts/fallback.md")
-    _assert_markdown_link(readme, "./docs/verification/verification-scenarios.md")
+    _assert_markdown_link(readme, "./docs/platforms/codex.md")
+    _assert_markdown_link(readme, "./docs/platforms/claude.md")
+    _assert_markdown_link(readme, "./docs/platforms/opencode.md")
+    _assert_markdown_link(readme, "./docs/skills/delivery-flow/selection-contract.md")
+    _assert_markdown_link(readme, "./docs/skills/delivery-flow/router-contract.md")
+    _assert_markdown_link(readme, "./docs/skills/delivery-flow/superpowers-backed.md")
+    _assert_markdown_link(readme, "./docs/skills/delivery-flow/fallback.md")
+    _assert_markdown_link(readme, "./docs/skills/delivery-flow/verification-scenarios.md")
     _assert_markdown_link(readme, "./skills/delivery-flow/SKILL.md")
     _assert_markdown_link(readme, "./skills/using-delivery-flow/SKILL.md")
     _assert_mentions(readme, "required changes", "testing issues", "maintainability issues")
@@ -306,14 +306,14 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
         "接管",
         "让行",
     )
-    _assert_markdown_link(readme_zh, "./docs/README.codex.zh-CN.md")
-    _assert_markdown_link(readme_zh, "./docs/README.claude.zh-CN.md")
-    _assert_markdown_link(readme_zh, "./docs/README.opencode.zh-CN.md")
-    _assert_markdown_link(readme_zh, "./docs/contracts/selection-contract.zh-CN.md")
-    _assert_markdown_link(readme_zh, "./docs/contracts/router-contract.zh-CN.md")
-    _assert_markdown_link(readme_zh, "./docs/contracts/superpowers-backed.md")
-    _assert_markdown_link(readme_zh, "./docs/contracts/fallback.md")
-    _assert_markdown_link(readme_zh, "./docs/verification/verification-scenarios.md")
+    _assert_markdown_link(readme_zh, "./docs/platforms/codex.zh-CN.md")
+    _assert_markdown_link(readme_zh, "./docs/platforms/claude.zh-CN.md")
+    _assert_markdown_link(readme_zh, "./docs/platforms/opencode.zh-CN.md")
+    _assert_markdown_link(readme_zh, "./docs/skills/delivery-flow/selection-contract.zh-CN.md")
+    _assert_markdown_link(readme_zh, "./docs/skills/delivery-flow/router-contract.zh-CN.md")
+    _assert_markdown_link(readme_zh, "./docs/skills/delivery-flow/superpowers-backed.md")
+    _assert_markdown_link(readme_zh, "./docs/skills/delivery-flow/fallback.md")
+    _assert_markdown_link(readme_zh, "./docs/skills/delivery-flow/verification-scenarios.md")
     _assert_markdown_link(readme_zh, "./skills/delivery-flow/SKILL.md")
     _assert_markdown_link(readme_zh, "./skills/using-delivery-flow/SKILL.md")
     _assert_mentions(readme_zh, "required changes", "testing issues", "maintainability issues")
@@ -325,8 +325,8 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
 
 
 def test_codex_guides_lock_execution_strategy_contract() -> None:
-    codex_doc = _read("docs/README.codex.md")
-    codex_doc_zh = _read("docs/README.codex.zh-CN.md")
+    codex_doc = _read("docs/platforms/codex.md")
+    codex_doc_zh = _read("docs/platforms/codex.zh-CN.md")
 
     _assert_mentions(codex_doc, "execution strategy", "subagent-driven", "inline", "unresolved")
     _assert_mentions(
@@ -388,9 +388,9 @@ def test_codex_guides_lock_execution_strategy_contract() -> None:
 
 
 def test_platform_docs_have_zh_cn_parity() -> None:
-    readme_codex_zh = _read("docs/README.codex.zh-CN.md")
-    readme_claude_zh = _read("docs/README.claude.zh-CN.md")
-    readme_opencode_zh = _read("docs/README.opencode.zh-CN.md")
+    readme_codex_zh = _read("docs/platforms/codex.zh-CN.md")
+    readme_claude_zh = _read("docs/platforms/claude.zh-CN.md")
+    readme_opencode_zh = _read("docs/platforms/opencode.zh-CN.md")
 
     _assert_mentions(
         readme_codex_zh,
@@ -427,7 +427,7 @@ def test_platform_docs_have_zh_cn_parity() -> None:
 
 
 def test_verification_scenarios_cover_execution_strategy_edges() -> None:
-    scenarios_doc = _read("docs/verification/verification-scenarios.md")
+    scenarios_doc = _read("docs/skills/delivery-flow/verification-scenarios.md")
 
     _assert_mentions(
         scenarios_doc,
@@ -465,3 +465,14 @@ def test_root_markdown_surface_is_readme_only() -> None:
     root_markdown_files = sorted(path.name for path in REPO_ROOT.glob("*.md"))
 
     assert root_markdown_files == ["README.md", "README.zh-CN.md"]
+
+
+def test_docs_layout_is_skill_and_platform_scoped() -> None:
+    assert (REPO_ROOT / "docs" / "platforms" / "codex.md").is_file()
+    assert (REPO_ROOT / "docs" / "platforms" / "claude.md").is_file()
+    assert (REPO_ROOT / "docs" / "platforms" / "opencode.md").is_file()
+    assert (REPO_ROOT / "docs" / "skills" / "delivery-flow" / "selection-contract.md").is_file()
+    assert (REPO_ROOT / "docs" / "skills" / "delivery-flow" / "router-contract.md").is_file()
+    assert (REPO_ROOT / "docs" / "skills" / "delivery-flow" / "superpowers-backed.md").is_file()
+    assert (REPO_ROOT / "docs" / "skills" / "delivery-flow" / "fallback.md").is_file()
+    assert (REPO_ROOT / "docs" / "skills" / "delivery-flow" / "verification-scenarios.md").is_file()

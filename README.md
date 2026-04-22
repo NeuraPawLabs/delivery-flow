@@ -4,7 +4,7 @@
 plan moving through `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
 without handing the loop back to the owner after each stage.
 
-[中文文档](./README.zh-CN.md) | [Codex Guide](./docs/README.codex.md) | [Claude/Cursor Guide](./docs/README.claude.md) | [OpenCode Guide](./docs/README.opencode.md)
+[中文文档](./README.zh-CN.md) | [Codex Guide](./docs/platforms/codex.md) | [Claude/Cursor Guide](./docs/platforms/claude.md) | [OpenCode Guide](./docs/platforms/opencode.md)
 
 ## Status
 
@@ -74,31 +74,31 @@ directory automatically. No `AGENTS.md` is required.
 
 - [README.zh-CN](./README.zh-CN.md)
   Chinese human overview.
-- [docs/README.codex.md](./docs/README.codex.md)
+- [docs/platforms/codex.md](./docs/platforms/codex.md)
   Human-facing Codex install and usage guide.
-- [docs/README.codex.zh-CN.md](./docs/README.codex.zh-CN.md)
+- [docs/platforms/codex.zh-CN.md](./docs/platforms/codex.zh-CN.md)
   Chinese human-facing Codex install and usage guide.
-- [docs/README.claude.md](./docs/README.claude.md)
+- [docs/platforms/claude.md](./docs/platforms/claude.md)
   Human-facing Claude Code and Cursor install guide.
-- [docs/README.claude.zh-CN.md](./docs/README.claude.zh-CN.md)
+- [docs/platforms/claude.zh-CN.md](./docs/platforms/claude.zh-CN.md)
   Chinese human-facing Claude Code and Cursor install guide.
-- [docs/README.opencode.md](./docs/README.opencode.md)
+- [docs/platforms/opencode.md](./docs/platforms/opencode.md)
   Human-facing OpenCode install and usage guide.
-- [docs/README.opencode.zh-CN.md](./docs/README.opencode.zh-CN.md)
+- [docs/platforms/opencode.zh-CN.md](./docs/platforms/opencode.zh-CN.md)
   Chinese human-facing OpenCode install and usage guide.
-- [docs/contracts/selection-contract.md](./docs/contracts/selection-contract.md)
+- [docs/skills/delivery-flow/selection-contract.md](./docs/skills/delivery-flow/selection-contract.md)
   Selection-time contract and precedence rules.
-- [docs/contracts/selection-contract.zh-CN.md](./docs/contracts/selection-contract.zh-CN.md)
+- [docs/skills/delivery-flow/selection-contract.zh-CN.md](./docs/skills/delivery-flow/selection-contract.zh-CN.md)
   Chinese selection-time contract.
-- [docs/contracts/router-contract.md](./docs/contracts/router-contract.md)
+- [docs/skills/delivery-flow/router-contract.md](./docs/skills/delivery-flow/router-contract.md)
   Router-first take-ownership and yield rules.
-- [docs/contracts/router-contract.zh-CN.md](./docs/contracts/router-contract.zh-CN.md)
+- [docs/skills/delivery-flow/router-contract.zh-CN.md](./docs/skills/delivery-flow/router-contract.zh-CN.md)
   Chinese router-first contract.
-- [docs/contracts/superpowers-backed.md](./docs/contracts/superpowers-backed.md)
+- [docs/skills/delivery-flow/superpowers-backed.md](./docs/skills/delivery-flow/superpowers-backed.md)
   `superpowers-backed` backend contract.
-- [docs/contracts/fallback.md](./docs/contracts/fallback.md)
+- [docs/skills/delivery-flow/fallback.md](./docs/skills/delivery-flow/fallback.md)
   `fallback` backend contract.
-- [docs/verification/verification-scenarios.md](./docs/verification/verification-scenarios.md)
+- [docs/skills/delivery-flow/verification-scenarios.md](./docs/skills/delivery-flow/verification-scenarios.md)
   Verification scenarios for discovery, routing, and execution behavior.
 - [.codex/INSTALL.md](./.codex/INSTALL.md)
   Agent-facing install instructions for Codex raw fetch flows.
@@ -119,10 +119,10 @@ directory automatically. No `AGENTS.md` is required.
   Run trace and terminal evidence holder.
 - `src/delivery_flow/adapters/`
   Runtime-facing `superpowers-backed` and `fallback` adapters.
-- `docs/contracts/`
-  Selection, routing, and backend contracts for humans and tests.
-- `docs/verification/`
-  Verification scenarios and behavioral smoke references.
+- `docs/platforms/`
+  Human-facing installation guides for Codex, Claude Code, Cursor, and OpenCode.
+- `docs/skills/delivery-flow/`
+  Skill-specific contracts and verification references for `delivery-flow`.
 - `tests/`
   Repository verification baseline.
 

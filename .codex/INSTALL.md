@@ -106,10 +106,11 @@ uv run pytest
 The `~/.agents/skills/delivery-flow` link keeps pointing at the updated repo
 skills directory.
 
-For a fuller guide, see `docs/README.codex.md` in the repository.
+For a fuller guide, see `docs/platforms/codex.md` in the repository.
 
-Human-readable contract references live under `docs/contracts/` and
-`docs/verification/`. AI-facing skill entrypoints remain under `skills/`.
+Platform guides live under `docs/platforms/`. Human-readable
+`delivery-flow` contracts and verification docs live under
+`docs/skills/delivery-flow/`. AI-facing skill entrypoints remain under `skills/`.
 
 ## Uninstalling
 

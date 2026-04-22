@@ -246,8 +246,8 @@ def test_discovery_prerequisites_are_executable_locally(tmp_path: Path) -> None:
 
 def test_activation_prerequisites_align_skill_metadata_with_documented_trigger_paths() -> None:
     skill_doc = _read("skills/delivery-flow/SKILL.md")
-    codex_doc = _read("docs/README.codex.md")
-    codex_doc_zh = _read("docs/README.codex.zh-CN.md")
+    codex_doc = _read("docs/platforms/codex.md")
+    codex_doc_zh = _read("docs/platforms/codex.zh-CN.md")
 
     assert _frontmatter_value(skill_doc, "name") == "delivery-flow"
     assert _frontmatter_value(skill_doc, "description")

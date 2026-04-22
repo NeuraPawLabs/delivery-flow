@@ -136,9 +136,9 @@ Silent fallback is forbidden.
 
 ## Supporting Docs
 
-- `../../docs/contracts/superpowers-backed.md`
-- `../../docs/contracts/fallback.md`
-- `../../docs/verification/verification-scenarios.md`
+- `../../docs/skills/delivery-flow/superpowers-backed.md`
+- `../../docs/skills/delivery-flow/fallback.md`
+- `../../docs/skills/delivery-flow/verification-scenarios.md`
 
 ## Quick Reference
 

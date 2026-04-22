@@ -1,6 +1,6 @@
 # Delivery Flow for OpenCode
 
-[English](README.opencode.md) | [简体中文](README.opencode.zh-CN.md)
+[English](./opencode.md) | [简体中文](./opencode.zh-CN.md)
 
 Guide for using `delivery-flow` with OpenCode through the repository-local
 plugin entry.
@@ -79,4 +79,4 @@ Expected result: OpenCode can describe both skills from the repo-local
 - startup bootstrap stays routing-only
 - the plugin should not inline downstream workflow semantics
 
-See `.opencode/INSTALL.md` for the install summary.
+See `../../.opencode/INSTALL.md` for the install summary.

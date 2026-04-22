@@ -2,7 +2,7 @@
 
 这是给 Claude Code 和 Cursor 使用者看的中文安装与使用说明。
 
-[English Version](./README.claude.md)
+[English Version](./claude.md)
 
 ## 快速开始
 
