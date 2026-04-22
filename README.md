@@ -6,6 +6,8 @@ without handing the loop back to the owner after each stage.
 
 [中文文档](./README.zh-CN.md) | [Codex Guide](./docs/platforms/codex.md) | [Claude/Cursor Guide](./docs/platforms/claude.md) | [OpenCode Guide](./docs/platforms/opencode.md)
 
+docs/ is human-facing. skills/ contains the AI-facing skill entrypoints and supporting references.
+
 ## Status
 
 - official skill entrypoints live under `skills/delivery-flow/` and `skills/using-delivery-flow/`
@@ -70,7 +72,7 @@ so ongoing delivery threads can prefer `delivery-flow`.
 OpenCode installs the repository as a plugin and registers the shared `skills/`
 directory automatically. No `AGENTS.md` is required.
 
-## Documentation
+## Human Docs
 
 - [README.zh-CN](./README.zh-CN.md)
   Chinese human overview.
@@ -86,26 +88,29 @@ directory automatically. No `AGENTS.md` is required.
   Human-facing OpenCode install and usage guide.
 - [docs/platforms/opencode.zh-CN.md](./docs/platforms/opencode.zh-CN.md)
   Chinese human-facing OpenCode install and usage guide.
-- [docs/skills/delivery-flow/selection-contract.md](./docs/skills/delivery-flow/selection-contract.md)
-  Selection-time contract and precedence rules.
-- [docs/skills/delivery-flow/selection-contract.zh-CN.md](./docs/skills/delivery-flow/selection-contract.zh-CN.md)
-  Chinese selection-time contract.
-- [docs/skills/delivery-flow/router-contract.md](./docs/skills/delivery-flow/router-contract.md)
-  Router-first take-ownership and yield rules.
-- [docs/skills/delivery-flow/router-contract.zh-CN.md](./docs/skills/delivery-flow/router-contract.zh-CN.md)
-  Chinese router-first contract.
-- [docs/skills/delivery-flow/superpowers-backed.md](./docs/skills/delivery-flow/superpowers-backed.md)
-  `superpowers-backed` backend contract.
-- [docs/skills/delivery-flow/fallback.md](./docs/skills/delivery-flow/fallback.md)
-  `fallback` backend contract.
-- [docs/skills/delivery-flow/verification-scenarios.md](./docs/skills/delivery-flow/verification-scenarios.md)
-  Verification scenarios for discovery, routing, and execution behavior.
-- [.codex/INSTALL.md](./.codex/INSTALL.md)
-  Agent-facing install instructions for Codex raw fetch flows.
+
+## AI Skill Files
+
 - [skills/delivery-flow/SKILL.md](./skills/delivery-flow/SKILL.md)
   AI-facing execution skill contract.
+- [skills/delivery-flow/selection-contract.md](./skills/delivery-flow/selection-contract.md)
+  Selection-time supporting contract for `delivery-flow`.
+- [skills/delivery-flow/selection-contract.zh-CN.md](./skills/delivery-flow/selection-contract.zh-CN.md)
+  Chinese selection-time supporting contract.
+- [skills/delivery-flow/router-contract.md](./skills/delivery-flow/router-contract.md)
+  Router-first supporting contract.
+- [skills/delivery-flow/router-contract.zh-CN.md](./skills/delivery-flow/router-contract.zh-CN.md)
+  Chinese router-first supporting contract.
+- [skills/delivery-flow/superpowers-backed.md](./skills/delivery-flow/superpowers-backed.md)
+  `superpowers-backed` supporting backend contract.
+- [skills/delivery-flow/fallback.md](./skills/delivery-flow/fallback.md)
+  `fallback` supporting backend contract.
+- [skills/delivery-flow/verification-scenarios.md](./skills/delivery-flow/verification-scenarios.md)
+  Supporting verification scenarios for the execution skill.
 - [skills/using-delivery-flow/SKILL.md](./skills/using-delivery-flow/SKILL.md)
   AI-facing root routing skill contract.
+- [.codex/INSTALL.md](./.codex/INSTALL.md)
+  Agent-facing install instructions for Codex raw fetch flows.
 
 ## Repository Layout
 
@@ -121,8 +126,8 @@ directory automatically. No `AGENTS.md` is required.
   Runtime-facing `superpowers-backed` and `fallback` adapters.
 - `docs/platforms/`
   Human-facing installation guides for Codex, Claude Code, Cursor, and OpenCode.
-- `docs/skills/delivery-flow/`
-  Skill-specific contracts and verification references for `delivery-flow`.
+- `skills/delivery-flow/`
+  Execution skill entrypoint plus supporting AI-facing contracts and verification references.
 - `tests/`
   Repository verification baseline.
 

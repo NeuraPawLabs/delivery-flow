@@ -109,8 +109,8 @@ skills directory.
 For a fuller guide, see `docs/platforms/codex.md` in the repository.
 
 Platform guides live under `docs/platforms/`. Human-readable
-`delivery-flow` contracts and verification docs live under
-`docs/skills/delivery-flow/`. AI-facing skill entrypoints remain under `skills/`.
+docs stay in `docs/`. AI-facing skill entrypoints and supporting references
+live under `skills/`.
 
 ## Uninstalling
 
