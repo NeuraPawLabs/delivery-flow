@@ -6,6 +6,7 @@ description: Use when `delivery-flow` should act as the router-first top-level p
 # Delivery Flow
 
 `delivery-flow` is router-first: before it enters execution, it decides whether the current user turn belongs to an ongoing delivery thread.
+Root entry routing starts in `skills/using-delivery-flow/SKILL.md`; once `delivery-flow` is entered, this file keeps the post-entry routing, selection, and execution contract together.
 
 Use this skill when one main agent should keep work moving through:
 

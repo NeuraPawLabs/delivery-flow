@@ -2,6 +2,7 @@
 __pycache__/
 .pytest_cache/
 *.pyc
+superpowers/
 docs/local-plans/
 docs/superpowers/
 .delivery_flow/

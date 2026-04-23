@@ -11,7 +11,9 @@
 
 - `skills/`
   面向 agent 的合约层。这里的 markdown 定义路由规则、ownership 规则、
-  执行语义和停止条件。
+  执行语义和停止条件。根入口路由从 `using-delivery-flow` 开始，而
+  `delivery-flow/SKILL.md` 统一承载进入 `delivery-flow` 之后的路由、
+  选择与执行合约。
 - `src/delivery_flow/`
   可执行的 controller/runtime 层。它把这些合约变成明确的状态机和
   owner-facing 结果。
@@ -33,10 +35,7 @@ flowchart TD
     B --> D{"当前用户回合是否属于<br/>ongoing delivery thread"}
 
     D -->|否| E["让行给阶段型 skill<br/>brainstorming / writing-plans / executing-plans"]
-    D -->|是| F["skills/delivery-flow/SKILL.md<br/>顶层 orchestration skill"]
-
-    F --> G["skills/delivery-flow/selection-contract.md<br/>选择优先级契约"]
-    F --> H["skills/delivery-flow/router-contract.md<br/>router-first 契约"]
+    D -->|是| F["skills/delivery-flow/SKILL.md<br/>顶层 orchestration skill<br/>进入后路由 + 选择 + 执行合约"]
     F --> I{"选择 mode"}
 
     I -->|superpowers-backed| J["skills/delivery-flow/superpowers-backed.md<br/>后端契约"]
@@ -115,6 +114,7 @@ flowchart TD
 
 一旦 agent 决定进入 `delivery-flow`，`skills/delivery-flow/SKILL.md`
 里定义的执行 contract 就会由 controller/runtime 落地。
+现在这一个 skill 文件也统一承载了原先拆开的进入后路由与选择规则。
 
 公开入口从 `src/delivery_flow/controller.py` 开始：
 
@@ -136,7 +136,9 @@ flowchart TD
 ### 3. Adapter 保持统一的 owner-facing contract
 
 `src/delivery_flow/adapters/` 里的 adapter，把“工作流语义”和“后端能力”
-拆开了：
+拆开了。mode 相关的 markdown 语义则分别放在
+`skills/delivery-flow/superpowers-backed.md` 和
+`skills/delivery-flow/fallback.md`：
 
 - `SuperpowersAdapter` 面向具备 subagent 能力的后端
 - `FallbackAdapter` 在没有这些能力时，保留同一套工作流 contract
@@ -163,8 +165,10 @@ execution metadata、review events、issue actions 和 resume events。
 最后一层协作点在测试。
 
 `tests/test_docs_contract.py` 会直接读取 markdown，检查关键 contract 标记
-是否还存在。`tests/test_skill_contract.py` 和 runtime 相关测试则负责验证
-可执行状态机是否真的产生了这些文档承诺的 owner-facing 行为。
+是否还存在。保留下来的 `verification-scenarios.md` 则继续充当路由、
+execution strategy 和 stop behavior 的 acceptance-style checklist。
+`tests/test_skill_contract.py` 和 runtime 相关测试则负责验证可执行状态机
+是否真的产生了这些文档承诺的 owner-facing 行为。
 
 所以整个仓库形成的是这样一个闭环：
 

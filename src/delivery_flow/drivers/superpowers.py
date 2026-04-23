@@ -7,13 +7,14 @@ from delivery_flow.contracts.models import ExecutionMetadata
 
 
 class SuperpowersBackedDriver:
-    def __init__(self, provider: object) -> None:
+    def __init__(self, provider: object, *, executor_kind: str = "subagent") -> None:
         self.provider = provider
+        self.executor_kind = executor_kind
 
     def _delegated_execution_metadata(self, *, stage: str) -> ExecutionMetadata:
         return ExecutionMetadata(
             backend="superpowers-backed",
-            executor_kind="subagent",
+            executor_kind=self.executor_kind,
             stage=stage,
         )
 

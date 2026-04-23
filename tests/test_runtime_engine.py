@@ -478,38 +478,82 @@ def test_runtime_resume_rejects_result_without_resume_context() -> None:
         )
 
 
-def test_runtime_resume_rejects_non_owner_decision_stop_reason() -> None:
+def test_runtime_resume_accepts_same_blocker_stop_reason() -> None:
     plan = PlanArtifact(
         summary="resume runtime",
         tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
     )
+    adapter = ResumeAdapter(review_results=[{"raw_result": "approved"}])
     runtime = DeliveryFlowRuntime(
-        adapter=ResumeAdapter(review_results=[{"raw_result": "approved"}]),
+        adapter=adapter,
         capability_detector=SimpleNamespace(has_superpowers=True),
     )
 
-    with pytest.raises(ValueError, match="needs_owner_decision"):
-        runtime.resume(
-            ResumeRequestArtifact(
-                previous_result=RuntimeResult(
-                    mode="superpowers-backed",
-                    final_state=ControllerState.WAITING_FOR_OWNER,
-                    stop_reason=StopReason.SAME_BLOCKER,
-                    pending_task_id="task-1",
-                    resume_context=ResumeContextArtifact(
-                        plan=plan,
-                        task_index=0,
-                        latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
-                        latest_review=ReviewArtifact(
-                            raw_result="owner_input_required",
-                            findings=["choose rollout order"],
-                            owner_decision_reason="choose rollout order",
-                        ),
+    result = runtime.resume(
+        ResumeRequestArtifact(
+            previous_result=RuntimeResult(
+                mode="superpowers-backed",
+                final_state=ControllerState.WAITING_FOR_OWNER,
+                stop_reason=StopReason.SAME_BLOCKER,
+                pending_task_id="task-1",
+                resume_context=ResumeContextArtifact(
+                    plan=plan,
+                    task_index=0,
+                    latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
+                    latest_review=ReviewArtifact(
+                        raw_result="changes_requested",
+                        contract_area="review",
+                        failure_kind="same blocker persisted",
+                        expected_resolution="rerun task with owner guidance",
                     ),
                 ),
-                owner_response="continue",
-            )
+            ),
+            owner_response="continue with clarified guidance",
         )
+    )
+
+    assert result.stop_reason is StopReason.PASS
+    assert adapter.dev_owner_responses == ["continue with clarified guidance"]
+    assert adapter.review_owner_responses == ["continue with clarified guidance"]
+
+
+def test_runtime_resume_accepts_verification_unavailable_stop_reason() -> None:
+    plan = PlanArtifact(
+        summary="resume runtime",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+    adapter = ResumeAdapter(review_results=[{"raw_result": "approved"}])
+    runtime = DeliveryFlowRuntime(
+        adapter=adapter,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    result = runtime.resume(
+        ResumeRequestArtifact(
+            previous_result=RuntimeResult(
+                mode="superpowers-backed",
+                final_state=ControllerState.WAITING_FOR_OWNER,
+                stop_reason=StopReason.VERIFICATION_UNAVAILABLE,
+                pending_task_id="task-1",
+                resume_context=ResumeContextArtifact(
+                    plan=plan,
+                    task_index=0,
+                    latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
+                    latest_review=ReviewArtifact(
+                        raw_result="changes_requested",
+                        contract_area="review",
+                        failure_kind="verification evidence missing",
+                        expected_resolution="supply owner evidence and rerun",
+                    ),
+                ),
+            ),
+            owner_response="continue with the missing evidence",
+        )
+    )
+
+    assert result.stop_reason is StopReason.PASS
+    assert adapter.dev_owner_responses == ["continue with the missing evidence"]
+    assert adapter.review_owner_responses == ["continue with the missing evidence"]
 
 
 def test_runtime_resume_restores_stage_events_for_seeded_sequence() -> None:

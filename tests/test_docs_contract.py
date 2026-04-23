@@ -190,39 +190,6 @@ def test_platform_docs_cover_bootstrap_install_paths() -> None:
     )
 
 
-def test_selection_contract_doc_locks_selection_precedence_rules() -> None:
-    selection_doc = _read("skills/delivery-flow/selection-contract.md")
-
-    _assert_mentions(
-        selection_doc,
-        "top-level orchestrator",
-        "even if a plan already exists",
-        "ongoing delivery thread",
-        "prefer `delivery-flow` over `executing-plans`",
-        "review/fix continuation",
-        "do not switch away merely because planning is complete",
-        "brainstorming",
-        "writing-plans",
-        "executing-plans",
-        "subordinate workflows",
-    )
-
-
-def test_router_contract_docs_lock_router_first_take_ownership_and_yield_rules() -> None:
-    router_doc = _read("skills/delivery-flow/router-contract.md")
-
-    _assert_mentions(
-        router_doc,
-        "router-first",
-        "take ownership",
-        "yield",
-        "each new user turn",
-        "do not re-route on every internal phase boundary",
-        "ongoing delivery thread",
-        "single phase",
-    )
-
-
 def test_project_readmes_cover_current_machine_install_and_verification() -> None:
     readme = _read("README.md")
     readme_zh = _read("README.zh-CN.md")
@@ -273,8 +240,6 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     _assert_markdown_link(readme, "./docs/platforms/codex.md")
     _assert_markdown_link(readme, "./docs/platforms/claude.md")
     _assert_markdown_link(readme, "./docs/platforms/opencode.md")
-    _assert_markdown_link(readme, "./skills/delivery-flow/selection-contract.md")
-    _assert_markdown_link(readme, "./skills/delivery-flow/router-contract.md")
     _assert_markdown_link(readme, "./skills/delivery-flow/superpowers-backed.md")
     _assert_markdown_link(readme, "./skills/delivery-flow/fallback.md")
     _assert_markdown_link(readme, "./skills/delivery-flow/verification-scenarios.md")
@@ -503,8 +468,6 @@ def test_docs_layout_is_human_only_and_skill_supporting_docs_live_under_skills()
     assert (REPO_ROOT / "docs" / "platforms" / "claude.md").is_file()
     assert (REPO_ROOT / "docs" / "platforms" / "opencode.md").is_file()
     assert not (REPO_ROOT / "docs" / "skills").exists()
-    assert (REPO_ROOT / "skills" / "delivery-flow" / "selection-contract.md").is_file()
-    assert (REPO_ROOT / "skills" / "delivery-flow" / "router-contract.md").is_file()
     assert (REPO_ROOT / "skills" / "delivery-flow" / "superpowers-backed.md").is_file()
     assert (REPO_ROOT / "skills" / "delivery-flow" / "fallback.md").is_file()
     assert (REPO_ROOT / "skills" / "delivery-flow" / "verification-scenarios.md").is_file()

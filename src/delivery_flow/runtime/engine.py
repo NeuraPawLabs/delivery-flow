@@ -14,7 +14,7 @@ from delivery_flow.contracts import (
     RuntimeResult,
     TaskExecutionContext,
 )
-from delivery_flow.contracts.models import ExecutionMetadata
+from delivery_flow.contracts.models import ExecutionMetadata, KNOWN_EXECUTION_STRATEGIES
 from delivery_flow.contracts.protocols import CapabilityDetector, ExecutionBackend
 from delivery_flow.runtime.models import (
     BlockerIdentity,
@@ -35,6 +35,7 @@ class DeliveryFlowRuntime:
         self.capability_detector = capability_detector
         self.state = ControllerState.DISCUSSING_REQUIREMENT
         self.mode: str | None = None
+        self.execution_strategy: str | None = None
         self._sequence = [self.state.value]
         self._last_blocker_identity: BlockerIdentity | None = None
         self._previous_blocker_identity: BlockerIdentity | None = None
@@ -180,6 +181,47 @@ class DeliveryFlowRuntime:
             return payload
         raise TypeError(f"{field_name} must be a bool")
 
+    def _coerce_execution_strategy(self, payload: object) -> str | None:
+        if payload is None:
+            return None
+        strategy = str(payload)
+        if strategy not in KNOWN_EXECUTION_STRATEGIES:
+            raise ValueError(
+                "execution_strategy must be one of " + ", ".join(sorted(KNOWN_EXECUTION_STRATEGIES))
+            )
+        return strategy
+
+    @staticmethod
+    def default_execution_strategy(mode: str) -> str:
+        return "subagent-driven" if mode == "superpowers-backed" else "inline"
+
+    @classmethod
+    def resolve_execution_strategy(
+        cls,
+        payload: RequirementArtifact | ResumeRequestArtifact | dict[str, object],
+        *,
+        mode: str,
+        previous_strategy: str | None,
+    ) -> str:
+        explicit_strategy: object | None
+        if isinstance(payload, RequirementArtifact):
+            explicit_strategy = payload.execution_strategy
+        elif isinstance(payload, ResumeRequestArtifact):
+            explicit_strategy = payload.execution_strategy
+        else:
+            explicit_strategy = payload.get("execution_strategy")
+
+        if explicit_strategy is not None:
+            strategy = str(explicit_strategy)
+            if strategy not in KNOWN_EXECUTION_STRATEGIES:
+                raise ValueError(
+                    "execution_strategy must be one of " + ", ".join(sorted(KNOWN_EXECUTION_STRATEGIES))
+                )
+            return strategy
+        if previous_strategy is not None:
+            return previous_strategy
+        return cls.default_execution_strategy(mode)
+
     def _coerce_controller_state(self, payload: ControllerState | str) -> ControllerState:
         if isinstance(payload, ControllerState):
             return payload
@@ -197,8 +239,16 @@ class DeliveryFlowRuntime:
         return ResumeContextArtifact(
             plan=self._coerce_plan_artifact(payload["plan"]),
             task_index=int(payload["task_index"]),
-            latest_delivery=self._coerce_delivery_artifact(payload["latest_delivery"]),
-            latest_review=self._coerce_review_artifact(payload["latest_review"]),
+            latest_delivery=(
+                self._coerce_delivery_artifact(payload["latest_delivery"])
+                if payload.get("latest_delivery") is not None
+                else None
+            ),
+            latest_review=(
+                self._coerce_review_artifact(payload["latest_review"])
+                if payload.get("latest_review") is not None
+                else None
+            ),
         )
 
     def _coerce_runtime_result(self, payload: RuntimeResult | dict[str, object]) -> RuntimeResult:
@@ -208,6 +258,7 @@ class DeliveryFlowRuntime:
         resume_context_payload = payload.get("resume_context")
         return RuntimeResult(
             mode=str(payload.get("mode", "")),
+            execution_strategy=self._coerce_execution_strategy(payload.get("execution_strategy")),
             final_state=self._coerce_controller_state(payload["final_state"]),
             stage_sequence=[str(stage) for stage in payload.get("stage_sequence", [])],
             stop_reason=self._coerce_stop_reason(payload.get("stop_reason")),
@@ -239,20 +290,23 @@ class DeliveryFlowRuntime:
                 payload.get("restart_current_task_from_dev", False),
                 field_name="restart_current_task_from_dev",
             ),
+            execution_strategy=self._coerce_execution_strategy(payload.get("execution_strategy")),
         )
 
     def _build_resume_context(
         self,
         plan_artifact: PlanArtifact,
         task_index: int,
-        latest_delivery: DeliveryArtifact | dict[str, object],
-        latest_review: ReviewArtifact | dict[str, object],
+        latest_delivery: DeliveryArtifact | dict[str, object] | None,
+        latest_review: ReviewArtifact | dict[str, object] | None,
     ) -> ResumeContextArtifact:
         return ResumeContextArtifact(
             plan=plan_artifact,
             task_index=task_index,
-            latest_delivery=self._coerce_delivery_artifact(latest_delivery),
-            latest_review=self._coerce_review_artifact(latest_review),
+            latest_delivery=(
+                self._coerce_delivery_artifact(latest_delivery) if latest_delivery is not None else None
+            ),
+            latest_review=self._coerce_review_artifact(latest_review) if latest_review is not None else None,
         )
 
     def _build_task_context(
@@ -405,13 +459,22 @@ class DeliveryFlowRuntime:
         self._pending_task_id = None
         self._open_issue_summaries = []
         self._owner_acceptance_required = True
+        self.execution_strategy = None
         self.trace = None
 
     def _restore_resume_lifecycle(self, previous_result: RuntimeResult) -> None:
         if previous_result.final_state is not ControllerState.WAITING_FOR_OWNER:
             raise ValueError("Resume requests require a previous result waiting for owner input")
-        if previous_result.stop_reason is not StopReason.NEEDS_OWNER_DECISION:
-            raise ValueError("Resume requests require previous_result.stop_reason=needs_owner_decision")
+        if previous_result.stop_reason not in {
+            StopReason.NEEDS_OWNER_DECISION,
+            StopReason.SAME_BLOCKER,
+            StopReason.VERIFICATION_UNAVAILABLE,
+        }:
+            raise ValueError(
+                "Resume requests require previous_result.stop_reason in "
+                "{needs_owner_decision, same_blocker_after_two_fix_review_cycles, "
+                "required_verification_cannot_be_completed_with_available_evidence}"
+            )
         if previous_result.mode not in {"superpowers-backed", "fallback"}:
             raise ValueError("Resume requests require previous_result.mode to be a known mode")
         if previous_result.resume_context is None:
@@ -420,6 +483,9 @@ class DeliveryFlowRuntime:
             raise ValueError("Resume requests require previous_result.pending_task_id")
 
         self.mode = previous_result.mode
+        self.execution_strategy = previous_result.execution_strategy or self.default_execution_strategy(
+            previous_result.mode
+        )
         self.state = previous_result.final_state
         self._sequence = list(previous_result.stage_sequence or [self.state.value])
         self._reset_task_blockers()
@@ -452,6 +518,7 @@ class DeliveryFlowRuntime:
                 verification_evidence=list(delivery_payload.get("verification_evidence", [])),
                 residual_risk=list(delivery_payload.get("residual_risk", [])),
                 stop_reason=stop_reason,
+                execution_strategy=self.execution_strategy,
                 completed_task_ids=list(self._completed_task_ids),
                 open_issue_summaries=list(self._open_issue_summaries),
                 owner_acceptance_required=self._owner_acceptance_required,
@@ -462,6 +529,7 @@ class DeliveryFlowRuntime:
         )
         return RuntimeResult(
             mode=self.mode or "",
+            execution_strategy=self.execution_strategy,
             final_state=self.state,
             stage_sequence=list(self.trace.stage_sequence if self.trace is not None else self._sequence),
             stop_reason=stop_reason,
@@ -552,6 +620,7 @@ class DeliveryFlowRuntime:
                     StopReason.VERIFICATION_UNAVAILABLE,
                     latest_delivery,
                     review_dict,
+                    resume_context=self._build_resume_context(plan_artifact, task_index, latest_delivery, None),
                 ),
                 latest_delivery,
             )
@@ -582,6 +651,7 @@ class DeliveryFlowRuntime:
                     StopReason.SAME_BLOCKER,
                     latest_delivery,
                     review_dict,
+                    resume_context=self._build_resume_context(plan_artifact, task_index, latest_delivery, review_dict),
                 ),
                 latest_delivery,
             )
@@ -618,7 +688,7 @@ class DeliveryFlowRuntime:
         valid = {
             ControllerState.DISCUSSING_REQUIREMENT: {ControllerState.WRITING_SPEC},
             ControllerState.WRITING_SPEC: {ControllerState.PLANNING},
-            ControllerState.PLANNING: {ControllerState.RUNNING_DEV},
+            ControllerState.PLANNING: {ControllerState.RUNNING_DEV, ControllerState.WAITING_FOR_OWNER},
             ControllerState.RUNNING_DEV: {ControllerState.RUNNING_REVIEW},
             ControllerState.RUNNING_REVIEW: {
                 ControllerState.RUNNING_DEV,
@@ -750,14 +820,34 @@ class DeliveryFlowRuntime:
 
         self._reset_run_lifecycle()
         self.select_mode()
+        requirement_payload = asdict(payload) if isinstance(payload, RequirementArtifact) else dict(payload)
+        if requirement_payload.get("execution_strategy") is None:
+            requirement_payload.pop("execution_strategy", None)
+        self.execution_strategy = self.resolve_execution_strategy(
+            requirement_payload,
+            mode=self.mode or "",
+            previous_strategy=self.execution_strategy,
+        )
         self.trace = RunTrace(mode=self.mode or "")
         self.trace.record_stage_entry(self.state.value)
         self._transition_to(ControllerState.WRITING_SPEC)
-        requirement_payload = asdict(payload) if isinstance(payload, RequirementArtifact) else payload
         spec_result = self.adapter.discuss_and_spec(requirement_payload)
         self._transition_to(ControllerState.PLANNING)
         plan_result = self.adapter.plan(spec_result)
         plan_artifact = self._coerce_plan_artifact(plan_result)
+        if self.execution_strategy == "unresolved":
+            self._pending_task_id = plan_artifact.tasks[0].task_id
+            self._open_issue_summaries = ["choose execution strategy"]
+            return self._stop(
+                StopReason.NEEDS_OWNER_DECISION,
+                {"delivery_summary": "execution strategy unresolved"},
+                {
+                    "raw_result": "owner_input_required",
+                    "findings": ["choose execution strategy"],
+                    "owner_decision_reason": "choose execution strategy",
+                },
+                resume_context=self._build_resume_context(plan_artifact, 0, None, None),
+            )
         return self._execute_plan_from_task(plan_artifact, 0)
 
     def resume(self, payload: ResumeRequestArtifact | dict[str, object]) -> RuntimeResult:
@@ -771,17 +861,27 @@ class DeliveryFlowRuntime:
             raise ValueError("Resume requests require previous_result.resume_context")
 
         self._restore_resume_lifecycle(previous_result)
+        self.execution_strategy = self.resolve_execution_strategy(
+            request,
+            mode=self.mode or "",
+            previous_strategy=self.execution_strategy,
+        )
         plan_artifact = resume_context.plan
         current_task = plan_artifact.tasks[resume_context.task_index]
         if previous_result.pending_task_id != current_task.task_id:
             raise ValueError("Resume requests require pending_task_id to match resume_context.task_index")
+        start_with_review = (
+            previous_result.stop_reason is StopReason.NEEDS_OWNER_DECISION
+            and resume_context.latest_delivery is not None
+            and not request.restart_current_task_from_dev
+        )
         if self.trace is not None:
             self.trace.record_resume(
                 task_id=current_task.task_id,
                 target_stage=(
-                    ControllerState.RUNNING_DEV.value
-                    if request.restart_current_task_from_dev
-                    else ControllerState.RUNNING_REVIEW.value
+                    ControllerState.RUNNING_REVIEW.value
+                    if start_with_review
+                    else ControllerState.RUNNING_DEV.value
                 ),
                 owner_response=request.owner_response,
             )
@@ -791,7 +891,7 @@ class DeliveryFlowRuntime:
             resume_context.task_index,
             latest_delivery=resume_context.latest_delivery,
             latest_review=resume_context.latest_review,
-            start_with_review=not request.restart_current_task_from_dev,
+            start_with_review=start_with_review,
             owner_response=request.owner_response,
             resumed_current_task=True,
         )

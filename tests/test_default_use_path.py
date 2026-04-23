@@ -55,6 +55,7 @@ def test_run_delivery_flow_defaults_into_runtime_and_emits_mode_banner() -> None
     )
 
     assert result.mode == "superpowers-backed"
+    assert result.execution_strategy == "subagent-driven"
     assert result.final_summary.startswith("mode=superpowers-backed")
 
 
@@ -324,6 +325,44 @@ def test_run_delivery_flow_surfaces_superpowers_execution_evidence_without_chang
     assert "\n".join(superpowers_result.final_summary.splitlines()[1:]) == "\n".join(
         fallback_result.final_summary.splitlines()[1:]
     )
+
+
+def test_run_delivery_flow_honors_explicit_inline_execution_strategy_in_superpowers_mode() -> None:
+    result = run_delivery_flow(
+        payload={"ticket": 302, "goal": "inline strategy", "execution_strategy": "inline"},
+        provider=TaskLoopProvider(
+            review_results=[{"raw_result": "approved"}, {"raw_result": "approved"}],
+            finalize_result={"owner_acceptance_required": False},
+        ),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    assert result.mode == "superpowers-backed"
+    assert result.execution_strategy == "inline"
+    assert "execution_strategy=inline" in result.final_summary
+    assert (
+        "orchestration: backend=superpowers-backed executor_kind=inline "
+        "stages=running_dev,running_review"
+    ) in result.final_summary
+
+
+def test_run_delivery_flow_unresolved_execution_strategy_stops_after_planning() -> None:
+    result = run_delivery_flow(
+        payload={"ticket": 303, "goal": "pick execution strategy", "execution_strategy": "unresolved"},
+        provider=TaskLoopProvider(
+            review_results=[{"raw_result": "approved"}, {"raw_result": "approved"}],
+            finalize_result={"owner_acceptance_required": False},
+        ),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    assert result.mode == "superpowers-backed"
+    assert result.execution_strategy == "unresolved"
+    assert result.stop_reason is StopReason.NEEDS_OWNER_DECISION
+    assert result.pending_task_id == "task-1"
+    assert result.completed_task_ids == []
+    assert result.open_issue_summaries == ["choose execution strategy"]
+    assert "execution_strategy=unresolved" in result.final_summary
 
 
 def test_resume_delivery_flow_defaults_to_current_task_review() -> None:

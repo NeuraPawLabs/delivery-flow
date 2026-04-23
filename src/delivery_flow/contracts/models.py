@@ -10,12 +10,21 @@ PASS_REVIEW_RESULTS = frozenset({"approved", "pass"})
 BLOCKER_REVIEW_RESULTS = frozenset({"changes_requested", "blocker"})
 OWNER_DECISION_REVIEW_RESULTS = frozenset({"owner_input_required", "needs_owner_decision"})
 KNOWN_REVIEW_RESULTS = PASS_REVIEW_RESULTS | BLOCKER_REVIEW_RESULTS | OWNER_DECISION_REVIEW_RESULTS
+KNOWN_EXECUTION_STRATEGIES = frozenset({"subagent-driven", "inline", "unresolved"})
 
 
 @dataclass(frozen=True)
 class RequirementArtifact:
     ticket: int
     goal: str
+    execution_strategy: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.execution_strategy is not None and self.execution_strategy not in KNOWN_EXECUTION_STRATEGIES:
+            raise ValueError(
+                "Requirement artifacts require execution_strategy to be one of "
+                + ", ".join(sorted(KNOWN_EXECUTION_STRATEGIES))
+            )
 
 
 @dataclass(frozen=True)
@@ -127,8 +136,8 @@ class FinalizationArtifact:
 class ResumeContextArtifact:
     plan: PlanArtifact
     task_index: int
-    latest_delivery: DeliveryArtifact
-    latest_review: ReviewArtifact
+    latest_delivery: DeliveryArtifact | None = None
+    latest_review: ReviewArtifact | None = None
 
     def __post_init__(self) -> None:
         if self.task_index < 0 or self.task_index >= len(self.plan.tasks):
@@ -139,6 +148,7 @@ class ResumeContextArtifact:
 class RuntimeResult:
     mode: str
     final_state: ControllerState
+    execution_strategy: str | None = None
     stage_sequence: list[str] = field(default_factory=list)
     stop_reason: StopReason | None = None
     final_summary: str = ""
@@ -149,13 +159,26 @@ class RuntimeResult:
     resume_context: ResumeContextArtifact | None = None
     schema_version: ClassVar[str] = CONTRACT_SCHEMA_VERSION
 
+    def __post_init__(self) -> None:
+        if self.execution_strategy is not None and self.execution_strategy not in KNOWN_EXECUTION_STRATEGIES:
+            raise ValueError(
+                "Runtime results require execution_strategy to be one of "
+                + ", ".join(sorted(KNOWN_EXECUTION_STRATEGIES))
+            )
+
 
 @dataclass(frozen=True)
 class ResumeRequestArtifact:
     previous_result: RuntimeResult
     owner_response: str
     restart_current_task_from_dev: bool = False
+    execution_strategy: str | None = None
 
     def __post_init__(self) -> None:
         if not self.owner_response.strip():
             raise ValueError("Resume requests require a non-empty owner_response")
+        if self.execution_strategy is not None and self.execution_strategy not in KNOWN_EXECUTION_STRATEGIES:
+            raise ValueError(
+                "Resume requests require execution_strategy to be one of "
+                + ", ".join(sorted(KNOWN_EXECUTION_STRATEGIES))
+            )

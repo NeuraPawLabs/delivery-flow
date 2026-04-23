@@ -11,7 +11,9 @@ connect to the executable controller and runtime in `src/delivery_flow/`.
 
 - `skills/`
   Agent-facing contract layer. These markdown files define routing rules,
-  ownership rules, execution semantics, and stop conditions.
+  ownership rules, execution semantics, and stop conditions. Root entry routing
+  starts in `using-delivery-flow`, while `delivery-flow/SKILL.md` keeps the
+  post-entry routing, selection, and execution contract together.
 - `src/delivery_flow/`
   Executable controller and runtime layer. This layer turns the contract into a
   concrete state machine and owner-facing runtime result.
@@ -33,10 +35,7 @@ flowchart TD
     B --> D{"Does the current user turn belong<br/>to an ongoing delivery thread?"}
 
     D -->|No| E["Yield to stage-specific skills<br/>brainstorming / writing-plans / executing-plans"]
-    D -->|Yes| F["skills/delivery-flow/SKILL.md<br/>top-level orchestration skill"]
-
-    F --> G["skills/delivery-flow/selection-contract.md<br/>selection precedence"]
-    F --> H["skills/delivery-flow/router-contract.md<br/>router-first rules"]
+    D -->|Yes| F["skills/delivery-flow/SKILL.md<br/>top-level orchestration skill<br/>post-entry routing + selection + execution contract"]
     F --> I{"Select mode"}
 
     I -->|superpowers-backed| J["skills/delivery-flow/superpowers-backed.md<br/>backend contract"]
@@ -116,6 +115,8 @@ that bootstrap still points back to the same shared routing contract.
 
 Once the agent decides to enter `delivery-flow`, the execution contract defined
 in `skills/delivery-flow/SKILL.md` is implemented by the controller and runtime.
+That single skill file now carries the post-entry routing and selection rules
+that used to live in separate supporting docs.
 
 The public handoff begins in
 `src/delivery_flow/controller.py`:
@@ -139,7 +140,9 @@ explicit state machine:
 ### 3. Adapters preserve one owner-facing contract across backends
 
 The adapters in `src/delivery_flow/adapters/` separate workflow semantics from
-backend capability:
+backend capability. The mode-specific markdown semantics live in the supporting
+docs `skills/delivery-flow/superpowers-backed.md` and
+`skills/delivery-flow/fallback.md`:
 
 - `SuperpowersAdapter` uses a subagent-capable backend
 - `FallbackAdapter` preserves the same workflow contract without those extra
@@ -168,9 +171,11 @@ as:
 The final coordination point is the test suite.
 
 `tests/test_docs_contract.py` reads the markdown files directly and checks that
-the required contract markers are still present. `tests/test_skill_contract.py`
-and runtime tests then verify that the executable state machine actually
-produces the same owner-facing behavior.
+the required contract markers are still present. The remaining
+`verification-scenarios.md` file acts as an acceptance-style checklist for
+edge cases around routing, execution strategy, and stop behavior.
+`tests/test_skill_contract.py` and runtime tests then verify that the
+executable state machine actually produces the same owner-facing behavior.
 
 That means the repository uses this loop:
 

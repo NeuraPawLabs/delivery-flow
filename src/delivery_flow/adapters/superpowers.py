@@ -13,9 +13,9 @@ from delivery_flow.drivers.superpowers import SuperpowersBackedDriver
 
 
 class SuperpowersAdapter:
-    def __init__(self, provider: ExecutionBackend) -> None:
+    def __init__(self, provider: ExecutionBackend, *, executor_kind: str = "subagent") -> None:
         self.provider = provider
-        self.driver = SuperpowersBackedDriver(provider=provider)
+        self.driver = SuperpowersBackedDriver(provider=provider, executor_kind=executor_kind)
 
     def discuss_and_spec(self, payload: RequirementArtifact | dict[str, object]) -> object:
         return self.provider.discuss_and_spec(payload)

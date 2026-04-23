@@ -257,6 +257,83 @@ def test_contract_equality_uses_runtime_fields_only() -> None:
     assert left_result == right_result
 
 
+def test_runtime_result_accepts_known_execution_strategy() -> None:
+    result = RuntimeResult(
+        mode="superpowers-backed",
+        execution_strategy="subagent-driven",
+        final_state=ControllerState.WAITING_FOR_OWNER,
+    )
+
+    assert result.execution_strategy == "subagent-driven"
+
+
+def test_runtime_result_rejects_unknown_execution_strategy() -> None:
+    with pytest.raises(ValueError, match="execution_strategy"):
+        RuntimeResult(
+            mode="superpowers-backed",
+            execution_strategy="mystery",
+            final_state=ControllerState.WAITING_FOR_OWNER,
+        )
+
+
+def test_resume_request_accepts_execution_strategy_override() -> None:
+    plan = PlanArtifact(
+        summary="task loop",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+    request = ResumeRequestArtifact(
+        previous_result=RuntimeResult(
+            mode="superpowers-backed",
+            execution_strategy="subagent-driven",
+            final_state=ControllerState.WAITING_FOR_OWNER,
+            stop_reason=StopReason.NEEDS_OWNER_DECISION,
+            pending_task_id="task-1",
+            resume_context=ResumeContextArtifact(
+                plan=plan,
+                task_index=0,
+                latest_delivery=DeliveryArtifact(delivery_summary="implemented"),
+                latest_review=ReviewArtifact(
+                    raw_result="owner_input_required",
+                    findings=["choose rollout order"],
+                ),
+            ),
+        ),
+        owner_response="continue",
+        execution_strategy="inline",
+    )
+
+    assert request.execution_strategy == "inline"
+
+
+def test_resume_request_rejects_unknown_execution_strategy_override() -> None:
+    plan = PlanArtifact(
+        summary="task loop",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+
+    with pytest.raises(ValueError, match="execution_strategy"):
+        ResumeRequestArtifact(
+            previous_result=RuntimeResult(
+                mode="superpowers-backed",
+                execution_strategy="subagent-driven",
+                final_state=ControllerState.WAITING_FOR_OWNER,
+                stop_reason=StopReason.NEEDS_OWNER_DECISION,
+                pending_task_id="task-1",
+                resume_context=ResumeContextArtifact(
+                    plan=plan,
+                    task_index=0,
+                    latest_delivery=DeliveryArtifact(delivery_summary="implemented"),
+                    latest_review=ReviewArtifact(
+                        raw_result="owner_input_required",
+                        findings=["choose rollout order"],
+                    ),
+                ),
+            ),
+            owner_response="continue",
+            execution_strategy="mystery",
+        )
+
+
 def test_plan_artifact_requires_non_empty_task_list() -> None:
     with pytest.raises(ValueError, match="at least one task"):
         PlanArtifact(summary="empty", tasks=[])

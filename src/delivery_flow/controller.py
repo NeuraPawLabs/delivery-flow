@@ -46,12 +46,25 @@ def run_delivery_flow(
 ) -> RuntimeResult:
     selector = MainAgentLoopController(capability_detector=capability_detector)
     mode = selector.select_mode()
-    adapter = SuperpowersAdapter(provider=provider) if mode == "superpowers-backed" else FallbackAdapter(provider=provider)
+    execution_strategy = DeliveryFlowRuntime.resolve_execution_strategy(
+        payload,
+        mode=mode,
+        previous_strategy=None,
+    )
+    adapter = (
+        SuperpowersAdapter(
+            provider=provider,
+            executor_kind="inline" if execution_strategy == "inline" else "subagent",
+        )
+        if mode == "superpowers-backed"
+        else FallbackAdapter(provider=provider)
+    )
     runtime = DeliveryFlowRuntime(
         adapter=adapter,
         capability_detector=capability_detector,
     )
     runtime.mode = mode
+    runtime.execution_strategy = execution_strategy
     return runtime.run(payload)
 
 
@@ -66,12 +79,25 @@ def resume_delivery_flow(
     mode = resume_request.previous_result.mode
     if mode not in {"superpowers-backed", "fallback"}:
         raise ValueError("Resume requests require a known previous_result.mode")
-    adapter = SuperpowersAdapter(provider=provider) if mode == "superpowers-backed" else FallbackAdapter(provider=provider)
+    execution_strategy = DeliveryFlowRuntime.resolve_execution_strategy(
+        request,
+        mode=mode,
+        previous_strategy=resume_request.previous_result.execution_strategy,
+    )
+    adapter = (
+        SuperpowersAdapter(
+            provider=provider,
+            executor_kind="inline" if execution_strategy == "inline" else "subagent",
+        )
+        if mode == "superpowers-backed"
+        else FallbackAdapter(provider=provider)
+    )
     runtime = DeliveryFlowRuntime(
         adapter=adapter,
         capability_detector=capability_detector,
     )
     runtime.mode = mode
+    runtime.execution_strategy = execution_strategy
     return runtime.resume(resume_request)
 
 

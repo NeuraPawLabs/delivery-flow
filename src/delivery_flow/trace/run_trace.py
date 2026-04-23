@@ -104,6 +104,7 @@ class RunTrace:
         verification_evidence: list[str],
         residual_risk: list[str],
         stop_reason,
+        execution_strategy: str | None = None,
         completed_task_ids: list[str] | None = None,
         open_issue_summaries: list[str] | None = None,
         owner_acceptance_required: bool = True,
@@ -112,6 +113,8 @@ class RunTrace:
         self.stop_reason = stop_reason.value if hasattr(stop_reason, "value") else str(stop_reason)
         readable_reason = self.stop_reason.replace("_", " ")
         mode_line = f"mode={self.mode}"
+        if execution_strategy is not None:
+            mode_line = f"{mode_line} execution_strategy={execution_strategy}"
         execution_summary = self.execution_summary()
         if execution_summary:
             mode_line = f"{mode_line} orchestration: {execution_summary}"

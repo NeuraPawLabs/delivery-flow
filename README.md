@@ -114,11 +114,7 @@ OpenCode is also bootstrap-capable. Its plugin appends a strong root-routing boo
 ## AI Skill Files
 
 - [skills/delivery-flow/SKILL.md](./skills/delivery-flow/SKILL.md)
-  AI-facing execution skill contract.
-- [skills/delivery-flow/selection-contract.md](./skills/delivery-flow/selection-contract.md)
-  Selection-time supporting contract for `delivery-flow`.
-- [skills/delivery-flow/router-contract.md](./skills/delivery-flow/router-contract.md)
-  Router-first supporting contract.
+  AI-facing execution skill contract, including post-entry routing and selection rules.
 - [skills/delivery-flow/superpowers-backed.md](./skills/delivery-flow/superpowers-backed.md)
   `superpowers-backed` supporting backend contract.
 - [skills/delivery-flow/fallback.md](./skills/delivery-flow/fallback.md)
