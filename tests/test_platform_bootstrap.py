@@ -16,6 +16,19 @@ def _read(relative_path: str) -> str:
     return (REPO_ROOT / relative_path).read_text(encoding="utf-8")
 
 
+def _normalized_bootstrap_contract() -> str:
+    return _normalize_bootstrap(_read("skills/using-delivery-flow/bootstrap-contract.md"))
+
+
+def _normalize_bootstrap(text: str) -> str:
+    return text.replace("\r\n", "\n").strip()
+
+
+def _canonicalize_bootstrap(text: str) -> str:
+    normalized = _normalize_bootstrap(text)
+    return "\n".join(line.strip() for line in normalized.splitlines())
+
+
 def _read_json(relative_path: str) -> dict[str, object]:
     return json.loads(_read(relative_path))
 
@@ -68,21 +81,37 @@ def _run_node_json(script: str) -> dict[str, object]:
     return json.loads(result.stdout)
 
 
+def _create_plugin_fixture(tmp_path: Path, contract_text: str) -> Path:
+    fixture_root = tmp_path / "delivery-flow-fixture"
+    fixture_hook_dir = fixture_root / "hooks"
+    fixture_contract_path = fixture_root / "skills" / "using-delivery-flow" / "bootstrap-contract.md"
+
+    fixture_hook_dir.mkdir(parents=True)
+    fixture_contract_path.parent.mkdir(parents=True)
+
+    hook_path = fixture_hook_dir / "session-start"
+    shutil.copy2(REPO_ROOT / "hooks" / "session-start", hook_path)
+    hook_path.chmod(0o755)
+    fixture_contract_path.write_text(contract_text, encoding="utf-8", newline="")
+
+    return fixture_root
+
+
 def _assert_routing_bootstrap(bootstrap: str) -> None:
-    assert "using-delivery-flow" in bootstrap
-    assert "ongoing delivery threads" in bootstrap
-    assert "routing-focused bootstrap" not in bootstrap
-    assert "executing-plans" not in bootstrap
-    assert "test-driven-development" not in bootstrap
-    assert "brainstorming" not in bootstrap
+    normalized_bootstrap = bootstrap.lower()
+
+    assert "using-delivery-flow" in normalized_bootstrap
+    assert "before any response" in normalized_bootstrap
+    assert "ongoing delivery thread" in normalized_bootstrap
+    assert "plan presence alone is not enough to yield" in normalized_bootstrap
+    assert "review/fix continuation is a strong signal" in normalized_bootstrap
+    assert "single-phase work should yield" in normalized_bootstrap
+    assert "route into `delivery-flow`" in normalized_bootstrap
 
 
 def _assert_opencode_bootstrap(bootstrap: str) -> None:
     _assert_routing_bootstrap(bootstrap)
-    assert "root routing skill" in bootstrap
-    assert "routing-only" in bootstrap
-    assert "normal skill ecosystem" in bootstrap
-    assert "execution semantics" in bootstrap
+    assert _normalize_bootstrap(bootstrap) == _normalized_bootstrap_contract()
 
 
 def test_plugin_manifests_exist_and_keep_expected_fields() -> None:
@@ -378,3 +407,104 @@ def test_opencode_plugin_does_not_duplicate_bootstrap_when_any_text_part_has_it(
     assert system[0] == bootstrap
     assert system[1] == "Existing system guidance."
     _assert_opencode_bootstrap(bootstrap)
+
+
+def test_session_start_hook_and_opencode_plugin_share_same_bootstrap_contract() -> None:
+    expected_bootstrap = _normalized_bootstrap_contract()
+    session_payload = _run_session_start()
+    opencode_payload = _run_node_json(
+        """
+        import deliveryFlowPlugin from "./.opencode/plugins/delivery-flow.js";
+
+        const hooks = await deliveryFlowPlugin({});
+        const output = { system: [] };
+        await hooks["experimental.chat.system.transform"]({}, output);
+        console.log(JSON.stringify({ system: output.system }));
+        """
+    )
+
+    assert _normalize_bootstrap(session_payload["additionalContext"]) == (
+        f"<EXTREMELY_IMPORTANT>\\n{expected_bootstrap}\\n</EXTREMELY_IMPORTANT>"
+    )
+    assert opencode_payload["system"] == [expected_bootstrap]
+
+
+def test_session_start_hook_and_opencode_normalize_crlf_and_edge_whitespace(
+    tmp_path: Path,
+) -> None:
+    fixture_root = _create_plugin_fixture(
+        tmp_path,
+        "\r\n \tBefore any response, decide whether the current user turn belongs to an ongoing delivery thread.\r\n"
+        "Use `using-delivery-flow` as the root routing skill for that decision.\r\n"
+        "Route into `delivery-flow` when the request belongs to an ongoing delivery thread.\r\n \t\r\n",
+    )
+    expected_bootstrap = (
+        "Before any response, decide whether the current user turn belongs to an ongoing delivery thread.\n"
+        "Use `using-delivery-flow` as the root routing skill for that decision.\n"
+        "Route into `delivery-flow` when the request belongs to an ongoing delivery thread."
+    )
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in {"CLAUDE_PLUGIN_ROOT", "COPILOT_CLI", "CURSOR_PLUGIN_ROOT"}
+    }
+
+    session_result = subprocess.run(
+        [str(fixture_root / "hooks" / "session-start")],
+        cwd=fixture_root,
+        check=True,
+        text=True,
+        capture_output=True,
+        env=env,
+    )
+    session_payload = json.loads(session_result.stdout)
+    opencode_payload = _run_node_json(
+        f"""
+        import deliveryFlowPlugin from "./.opencode/plugins/delivery-flow.js";
+
+        const hooks = await deliveryFlowPlugin({{
+          worktree: {json.dumps(str(fixture_root))},
+        }});
+        const output = {{ system: [] }};
+        await hooks["experimental.chat.system.transform"]({{}}, output);
+        console.log(JSON.stringify({{ system: output.system }}));
+        """
+    )
+
+    assert _normalize_bootstrap(session_payload["additionalContext"]) == (
+        f"<EXTREMELY_IMPORTANT>\\n{expected_bootstrap}\\n</EXTREMELY_IMPORTANT>"
+    )
+    assert opencode_payload["system"] == [expected_bootstrap]
+
+
+def test_opencode_plugin_does_not_duplicate_bootstrap_when_spacing_differs() -> None:
+    payload = _run_node_json(
+        """
+        import path from "node:path";
+        import deliveryFlowPlugin from "./.opencode/plugins/delivery-flow.js";
+
+        const hooks = await deliveryFlowPlugin({
+          directory: path.resolve("docs"),
+          worktree: path.resolve("."),
+        });
+        const bootstrapOnly = { system: [] };
+        await hooks["experimental.chat.system.transform"]({}, bootstrapOnly);
+
+        const formattedBootstrap = `\\n  ${bootstrapOnly.system[0].replaceAll("\\n", "\\n  ")}\\n`;
+        const output = {
+          system: [formattedBootstrap],
+        };
+
+        await hooks["experimental.chat.system.transform"]({}, output);
+
+        console.log(JSON.stringify({
+          system: output.system,
+          bootstrap: bootstrapOnly.system[0],
+        }));
+        """
+    )
+
+    system = payload["system"]
+
+    assert len(system) == 1
+    assert _canonicalize_bootstrap(system[0]) == _canonicalize_bootstrap(payload["bootstrap"])

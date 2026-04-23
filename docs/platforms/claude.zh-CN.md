@@ -28,6 +28,20 @@
 - 它只是把路由前置，让持续交付线程优先进入 `delivery-flow`
 - 单一阶段任务仍然应该让行给普通 skill 生态
 
+## Bootstrap 强度
+
+Claude Code 和 Cursor 属于 bootstrap-capable 平台。
+
+会话启动时，插件会注入共享 `delivery-flow` 合约的 strong root-routing bootstrap。
+这个 root-routing bootstrap 发生在 before any response 之前。在 on each new
+user turn 时，agent 都要先判断自己是否应该接管 ongoing delivery thread；如果属于，
+就 take ownership 并路由到 `delivery-flow`，只有请求确实是 single-phase work
+时才让行。
+
+这份强合约还明确说明：plan presence alone is not enough to yield，而
+review/fix continuation is a strong signal，说明线程应继续留在
+`delivery-flow` 内。
+
 ## 验证
 
 检查插件清单：

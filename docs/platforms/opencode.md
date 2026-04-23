@@ -18,6 +18,20 @@ plugin entry.
 - points startup routing at `using-delivery-flow`
 - keeps bootstrap scope limited to route selection instead of downstream execution details
 
+## Bootstrap Strength
+
+OpenCode is a bootstrap-capable platform.
+
+The plugin appends a strong root-routing bootstrap for the shared
+`delivery-flow` contract to `output.system`, so the agent receives the same
+"before any response" routing rule as Claude Code and Cursor. On each new user
+turn, that root-routing bootstrap tells the agent to decide whether to take
+ownership of an ongoing delivery thread before normal task work begins.
+
+That bootstrap states that review/fix continuation is a strong signal for
+staying inside `delivery-flow`, while single-phase work should yield to the
+normal skill ecosystem.
+
 ## Files
 
 - `package.json`

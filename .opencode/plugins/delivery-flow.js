@@ -1,14 +1,9 @@
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const ROUTING_BOOTSTRAP = [
-  "Use `using-delivery-flow` as the root routing skill when the request may belong to ongoing delivery threads.",
-  "Keep this bootstrap routing-only: decide whether to route into `delivery-flow` or yield to the normal skill ecosystem.",
-  "Do not duplicate `delivery-flow` execution semantics here.",
-].join("\n");
 
 function getRepoRoot({ worktree, directory } = {}) {
   if (typeof worktree === "string" && worktree.length > 0) {
@@ -30,6 +25,26 @@ function resolveSkillsCandidate(repoRoot, candidate) {
   return path.resolve(repoRoot, candidate);
 }
 
+function getBootstrapContract(repoRoot) {
+  return normalizeBootstrap(
+    fs.readFileSync(
+      path.join(repoRoot, "skills", "using-delivery-flow", "bootstrap-contract.md"),
+      "utf8",
+    ),
+  );
+}
+
+function normalizeBootstrap(text) {
+  return text.replace(/\r\n/g, "\n").trim();
+}
+
+function canonicalizeBootstrap(text) {
+  return normalizeBootstrap(text)
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n");
+}
+
 function ensureSkillsPath(config, repoRoot, skillsPath) {
   const nextSkills = config.skills ? { ...config.skills } : {};
   const nextPaths = Array.isArray(nextSkills.paths) ? [...nextSkills.paths] : [];
@@ -46,17 +61,22 @@ function ensureSkillsPath(config, repoRoot, skillsPath) {
   config.skills = nextSkills;
 }
 
-function appendSystemBootstrap(output) {
+function appendSystemBootstrap(output, repoRoot) {
+  const bootstrap = getBootstrapContract(repoRoot);
+  const canonicalBootstrap = canonicalizeBootstrap(bootstrap);
+
   if (!Array.isArray(output.system)) {
     output.system = [];
   }
 
   const hasBootstrap = output.system.some(
-    (part) => typeof part === "string" && part.includes(ROUTING_BOOTSTRAP),
+    (part) =>
+      typeof part === "string" &&
+      canonicalizeBootstrap(part).includes(canonicalBootstrap),
   );
 
   if (!hasBootstrap) {
-    output.system.push(ROUTING_BOOTSTRAP);
+    output.system.push(bootstrap);
   }
 }
 
@@ -69,7 +89,7 @@ export default async function deliveryFlowPlugin(context = {}) {
       ensureSkillsPath(config, repoRoot, skillsPath);
     },
     async "experimental.chat.system.transform"(_input, output) {
-      appendSystemBootstrap(output);
+      appendSystemBootstrap(output, repoRoot);
     },
   };
 }

@@ -1,11 +1,4 @@
----
-name: using-delivery-flow
-description: Use when starting a conversation or continuing an ongoing delivery thread where continuous delivery orchestration may be needed; routes ongoing delivery threads into `delivery-flow` and yields single-phase work to normal stage-specific skills.
----
-
-# Using Delivery Flow
-
-This is the root routing skill for `delivery-flow`.
+# Delivery-Flow Bootstrap Contract
 
 ## Root Rule
 

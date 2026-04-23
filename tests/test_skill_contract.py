@@ -79,6 +79,18 @@ def _section_headings(document: str) -> list[str]:
     return re.findall(r"^## (.+)$", document, flags=re.MULTILINE)
 
 
+def _normalized_lines(document: str) -> list[str]:
+    normalized_lines = []
+    for line in document.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("- "):
+            stripped = stripped[2:]
+        normalized_lines.append(_normalized(stripped))
+    return normalized_lines
+
+
 def _assert_owner_facing_fields_match(left: RuntimeResult, right: RuntimeResult) -> None:
     assert left.stop_reason is right.stop_reason
     assert left.final_state is right.final_state
@@ -308,21 +320,54 @@ def test_root_skill_entrypoint_is_removed() -> None:
 def test_using_delivery_flow_is_a_root_routing_skill() -> None:
     routing_doc = _read("skills/using-delivery-flow/SKILL.md")
     description = _normalized(_frontmatter_value(routing_doc, "description"))
+    root_rule = _section_body(routing_doc, "Root Rule")
+    route_into = _section_body(routing_doc, "Route Into `delivery-flow`")
+    yield_to = _section_body(routing_doc, "Yield To Stage-Specific Skills")
+    hard_rules = _section_body(routing_doc, "Hard Routing Rules")
 
     assert _frontmatter_value(routing_doc, "name") == "using-delivery-flow"
     assert "starting a conversation" in description
     assert "continuing an ongoing delivery thread" in description
     assert "delivery-flow" in description
     assert "single-phase" in description
+    assert "before any response" in _normalized(root_rule)
+    assert "using-delivery-flow" in _normalized(root_rule)
+    assert "route into `delivery-flow`" in _normalized(route_into)
+    assert "single-phase work should yield" in _normalized(yield_to)
+    assert "plan presence alone is not enough to yield" in _normalized(hard_rules)
+    assert "review/fix continuation is a strong signal" in _normalized(hard_rules)
+    assert "do not duplicate `delivery-flow` execution semantics" in _normalized(hard_rules)
 
-    body = _normalized(routing_doc)
-    for marker in (
-        "thin routing skill",
-        "route into `delivery-flow`",
-        "yield to the normal stage-specific skills",
-        "do not duplicate `delivery-flow` execution semantics",
+
+def test_using_delivery_flow_bootstrap_contract_file_keeps_shared_root_routing_rules() -> None:
+    bootstrap_doc = _read("skills/using-delivery-flow/bootstrap-contract.md")
+    root_rule = _section_body(bootstrap_doc, "Root Rule")
+    route_into = _section_body(bootstrap_doc, "Route Into `delivery-flow`")
+    yield_to = _section_body(bootstrap_doc, "Yield To Stage-Specific Skills")
+    hard_rules = _section_body(bootstrap_doc, "Hard Routing Rules")
+
+    assert "before any response" in _normalized(root_rule)
+    assert "using-delivery-flow" in _normalized(root_rule)
+    assert "ongoing delivery thread" in _normalized(root_rule)
+    assert "route into `delivery-flow`" in _normalized(route_into)
+    assert "single-phase work should yield" in _normalized(yield_to)
+    assert "plan presence alone is not enough to yield" in _normalized(hard_rules)
+    assert "review/fix continuation is a strong signal" in _normalized(hard_rules)
+
+
+def test_using_delivery_flow_bootstrap_contract_aligns_with_root_routing_skill_sections() -> None:
+    routing_doc = _read("skills/using-delivery-flow/SKILL.md")
+    bootstrap_doc = _read("skills/using-delivery-flow/bootstrap-contract.md")
+
+    for heading in (
+        "Root Rule",
+        "Route Into `delivery-flow`",
+        "Yield To Stage-Specific Skills",
+        "Hard Routing Rules",
     ):
-        assert marker in body
+        assert _normalized_lines(_section_body(routing_doc, heading)) == _normalized_lines(
+            _section_body(bootstrap_doc, heading)
+        )
 
 
 def test_skill_doc_declares_selection_priority_and_neighbor_skill_markers() -> None:

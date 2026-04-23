@@ -36,6 +36,18 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 
 3. Restart Codex.
 
+## Capability Model
+
+Codex is discovery-only today.
+
+This install exposes `skills/using-delivery-flow` and `skills/delivery-flow`
+through native skill discovery, but it does not inject a session-start
+bootstrap. There is no session-start bootstrap parity here.
+
+Bootstrap-capable platforms such as Claude Code, Cursor, and OpenCode can
+front-load the root routing contract at session start. Codex cannot claim that
+parity until a real bootstrap surface exists.
+
 ### Windows
 
 Use a junction instead of a symlink:
@@ -48,8 +60,9 @@ cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFI
 ## How It Works
 
 Codex scans `~/.agents/skills/` at session start, reads `SKILL.md`
-frontmatter, and loads skills on demand through native skill discovery. The
-shared install surface exposes both controller skills:
+frontmatter, and loads skills on demand through native skill discovery. This
+is discovery-only wiring, not bootstrap parity. The shared install surface
+exposes both controller skills:
 
 ```text
 ~/.agents/skills/delivery-flow/

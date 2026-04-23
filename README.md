@@ -6,14 +6,21 @@ without handing the loop back to the owner after each stage.
 
 [中文文档](./README.zh-CN.md) | [Codex Guide](./docs/platforms/codex.md) | [Claude/Cursor Guide](./docs/platforms/claude.md) | [OpenCode Guide](./docs/platforms/opencode.md)
 
-docs/ is human-facing. skills/ contains the AI-facing skill entrypoints and supporting references.
+docs/ is human-facing. skills/ is agent-facing and contains the AI-facing skill entrypoints and supporting references.
+
+Platform capability split:
+
+- Codex installs the shared skill tree for discovery-only use and does not inject a session-start bootstrap
+- Claude Code, Cursor, and OpenCode are bootstrap-capable and front-load the shared root routing contract before any response
+
+Capability split: Codex is discovery-only and has no session-start bootstrap parity. For platform shorthand, this is the Codex versus Claude/Cursor/OpenCode split.
 
 ## Status
 
 - official skill entrypoints live under `skills/delivery-flow/` and `skills/using-delivery-flow/`
-- Codex install path is `~/.agents/skills/delivery-flow`
-- Claude Code and Cursor use `SessionStart` bootstrap via `.claude-plugin` and `.cursor-plugin`
-- OpenCode auto-loads `.opencode/plugins/delivery-flow.js`
+- Codex install path is `~/.agents/skills/delivery-flow`, and Codex is discovery-only today
+- Claude Code and Cursor are bootstrap-capable and use `SessionStart` bootstrap via `.claude-plugin` and `.cursor-plugin`
+- OpenCode is bootstrap-capable and auto-loads `.opencode/plugins/delivery-flow.js`
 - default-use path enters the runtime directly
 - post-plan execution stays task-by-task until a terminal stop
 - repository verification baseline is `uv run pytest`, completes successfully, and all repository tests pass
@@ -33,6 +40,8 @@ docs/ is human-facing. skills/ contains the AI-facing skill entrypoints and supp
 - task-loop evidence: completed task, pending task, open issues, and owner acceptance state
 
 ## Platform Install
+
+Human docs live under `docs/`. Agent-facing skill contracts and supporting references live under `skills/`.
 
 ### Codex
 
@@ -67,10 +76,14 @@ delivery-flow `SessionStart` bootstrap.
 The bootstrap does not replace the skill contract. It only front-loads routing
 so ongoing delivery threads can prefer `delivery-flow`.
 
+Claude Code and Cursor are bootstrap-capable. They inject a strong root-routing bootstrap before any response, evaluate each new user turn, take ownership of an ongoing delivery thread when appropriate, and yield only when the request is truly single-phase.
+
 ### OpenCode
 
 OpenCode installs the repository as a plugin and registers the shared `skills/`
 directory automatically. No `AGENTS.md` is required.
+
+OpenCode is also bootstrap-capable. Its plugin appends a strong root-routing bootstrap before any response so review/fix continuation stays inside `delivery-flow` while single-phase work still yields.
 
 ## Human Docs
 

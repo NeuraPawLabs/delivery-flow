@@ -61,6 +61,14 @@ The shared directory should look like this:
 This install path exposes both `skills/delivery-flow` and
 `skills/using-delivery-flow` without requiring `AGENTS.md`.
 
+## Capability Model
+
+This install enables `delivery-flow` in discovery-only mode for Codex.
+
+It exposes the shared skill tree through native skill discovery, but it does
+not inject a session-start bootstrap and does not provide bootstrap parity with
+Claude Code, Cursor, or OpenCode.
+
 ## Verify
 
 Check the shared skill directory:
@@ -108,9 +116,17 @@ skills directory.
 
 For a fuller guide, see `docs/platforms/codex.md` in the repository.
 
-Platform guides live under `docs/platforms/`. Human-readable
-docs stay in `docs/`. AI-facing skill entrypoints and supporting references
-live under `skills/`.
+Platform guides live under `docs/platforms/`. docs/ is human-facing.
+Human-readable docs stay in `docs/`. skills/ is agent-facing. AI-facing skill
+entrypoints and supporting references live under `skills/`.
+
+Codex is discovery-only. This install exposes native skill discovery but does
+not inject a session-start bootstrap, so there is no session-start bootstrap
+parity here.
+
+Bootstrap-capable platforms include Claude Code, Cursor, and OpenCode. Those
+platforms can inject a strong root-routing bootstrap at session start, while
+this Codex path only publishes the shared skills for discovery.
 
 ## Uninstalling
 

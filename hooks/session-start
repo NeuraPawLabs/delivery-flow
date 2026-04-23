@@ -2,8 +2,25 @@
 # SessionStart hook for delivery-flow plugin
 
 set -euo pipefail
+shopt -s extglob
 
-BOOTSTRAP="<EXTREMELY_IMPORTANT>\nUse the \`using-delivery-flow\` routing skill at the start of the conversation. It decides whether this turn belongs to ongoing delivery threads that should route into \`delivery-flow\`, or should yield to a normal single-phase skill.\n</EXTREMELY_IMPORTANT>"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+read_bootstrap_contract() {
+    local file_path="$1"
+    local content
+
+    content="$(<"$file_path")"
+    content="${content//$'\r'/}"
+    content="${content##+([[:space:]])}"
+    content="${content%%+([[:space:]])}"
+
+    printf '%s' "$content"
+}
+
+BOOTSTRAP_CONTENT="$(read_bootstrap_contract "${PLUGIN_ROOT}/skills/using-delivery-flow/bootstrap-contract.md")"
+BOOTSTRAP="<EXTREMELY_IMPORTANT>\n${BOOTSTRAP_CONTENT}\n</EXTREMELY_IMPORTANT>"
 
 escape_for_json() {
     local s="$1"

@@ -35,6 +35,16 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 
 3. 重启 Codex。
 
+## 能力模型
+
+Codex is discovery-only。
+
+这个安装会暴露 `skills/using-delivery-flow` 和 `skills/delivery-flow`，但不会注入
+session-start bootstrap，也就是没有 session-start bootstrap parity。
+
+Claude Code、Cursor、OpenCode 这类 bootstrap-capable 平台可以在会话启动时前置根路由合约；
+Codex 在真正的 bootstrap surface 出现前不能声称具备同等能力。
+
 ### Windows
 
 Windows 上可以使用 junction：
@@ -47,8 +57,8 @@ cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFI
 ## 工作方式
 
 Codex 会在会话启动时扫描 `~/.agents/skills/`，读取 `SKILL.md`
-frontmatter，并通过原生 skill discovery 按需加载 skill。共享安装面会暴露两个
-controller skill：
+frontmatter，并通过原生 skill discovery 按需加载 skill。这是 discovery-only
+接线，不是 bootstrap parity。共享安装面会暴露两个 controller skill：
 
 ```text
 ~/.agents/skills/delivery-flow/

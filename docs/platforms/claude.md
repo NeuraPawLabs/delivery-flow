@@ -30,6 +30,20 @@ repository plugin manifests and `SessionStart` bootstrap hooks.
 - it front-loads routing so ongoing delivery threads can prefer `delivery-flow`
 - single-phase work should still yield to the normal skill ecosystem
 
+## Bootstrap Strength
+
+Claude Code and Cursor are bootstrap-capable platforms.
+
+At session start, the plugin injects a strong root-routing bootstrap for the
+shared `delivery-flow` contract. This root-routing bootstrap runs before any
+response. On each new user turn, the agent is instructed to decide whether to
+take ownership of an ongoing delivery thread, route into `delivery-flow` when
+it does, and yield only when the request is truly single-phase.
+
+The strong contract also states that plan presence alone is not enough to yield
+and that review/fix continuation is a strong signal for keeping the thread
+inside `delivery-flow`.
+
 ## Verify
 
 Check the plugin manifests:

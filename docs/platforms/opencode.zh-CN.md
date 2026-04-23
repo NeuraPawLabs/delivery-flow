@@ -17,6 +17,20 @@
 - 让启动路由优先指向 `using-delivery-flow`
 - 保持 bootstrap 只负责路由判断，不内联后续执行语义
 
+## Bootstrap 强度
+
+OpenCode 属于 bootstrap-capable 平台。
+
+插件会把共享 `delivery-flow` 合约的 strong root-routing bootstrap 追加到
+`output.system`，因此 agent 拿到的就是和 Claude Code、Cursor 相同的
+"before any response" 路由规则。on each new user turn 时，这段
+root-routing bootstrap 都要求 agent 先判断自己是否应该 take ownership
+一个 ongoing delivery thread，然后再进入普通任务处理。
+
+这段 bootstrap 还会说明：review/fix continuation is a strong signal，
+而 single-phase work should yield，也就是持续线程继续留在
+`delivery-flow`，单阶段请求则让行给普通 skill 生态。
+
 ## 相关文件
 
 - `package.json`
