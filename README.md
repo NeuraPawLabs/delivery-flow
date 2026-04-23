@@ -1,8 +1,9 @@
 # Delivery Flow
 
-`delivery-flow` is a compact Codex skill and controller contract for keeping one task
-plan moving through `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
-without handing the loop back to the owner after each stage.
+`delivery-flow` is a compact shared agent skill surface and controller contract
+for keeping one task plan moving through
+`spec -> plan -> task-by-task dev/review/fix -> finalize -> wait` without
+handing the loop back to the owner after each stage.
 
 [中文文档](./README.zh-CN.md) | [Codex Guide](./docs/platforms/codex.md) | [Claude/Cursor Guide](./docs/platforms/claude.md) | [OpenCode Guide](./docs/platforms/opencode.md)
 
@@ -13,7 +14,9 @@ Platform capability split:
 - Codex installs the shared skill tree for discovery-only use and does not inject a session-start bootstrap
 - Claude Code, Cursor, and OpenCode are bootstrap-capable and front-load the shared root routing contract before any response
 
-Capability split: Codex is discovery-only and has no session-start bootstrap parity. For platform shorthand, this is the Codex versus Claude/Cursor/OpenCode split.
+Shared scope: the repository is not Codex-only. It publishes one shared skill
+surface, with platform differences limited to discovery-only versus
+bootstrap-capable startup behavior.
 
 ## Status
 
@@ -182,7 +185,9 @@ Expected result: `uv run pytest` completes successfully and all repository tests
 
 This repository centers on one runtime-backed owner-facing workflow loop:
 
-- the skill can be installed and discovered by Codex
+- the shared skill surface can be installed across supported platforms; Codex
+  uses discovery-only wiring while Claude Code, Cursor, and OpenCode add
+  bootstrap-capable startup routing
 - the controller runtime executes `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
 - post-plan execution keeps explicit `execution_strategy`: `subagent-driven`, `inline`, or `unresolved`
 - execution-strategy priority is `owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`

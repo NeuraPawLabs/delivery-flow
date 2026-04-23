@@ -1,6 +1,7 @@
 # Delivery Flow
 
-`delivery-flow` 是一个紧凑的 Codex skill 和控制器约定，用来把单条任务计划持续推进过
+`delivery-flow` 是一个紧凑的跨平台共享 agent skill 入口与控制器约定，
+用来把单条任务计划持续推进过
 `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`，而不是每一轮都重新断回 owner 手里。
 
 [English README](./README.md) | [Codex 指南](./docs/platforms/codex.zh-CN.md) | [Claude/Cursor 指南](./docs/platforms/claude.zh-CN.md) | [OpenCode 指南](./docs/platforms/opencode.zh-CN.md)
@@ -12,7 +13,9 @@ docs/ 只放给人类看的文档；skills/ 是给 agent 读取的，并存放 s
 - Codex 只会以 discovery-only 方式暴露共享 skill 树，不会注入 session-start bootstrap
 - Claude Code、Cursor、OpenCode 都是 bootstrap-capable 平台，会在 before any response 前置共享根路由合约
 
-能力分层：Codex is discovery-only，并且没有 session-start bootstrap parity。Claude Code, Cursor, and OpenCode are bootstrap-capable，可以在 before any response 之前注入 strong root-routing bootstrap。
+共享定位：这个仓库已经不是 Codex-only。它发布的是一套跨平台共享
+skill surface，平台差异只体现在 discovery-only 与 bootstrap-capable
+两种启动能力上。
 
 ## 当前状态
 
@@ -180,7 +183,9 @@ uv run pytest
 
 这一版聚焦证明以下几点：
 
-- skill 可以被 Codex 安装并发现
+- 共享 skill surface 可以在已支持的平台上安装；其中 Codex 走
+  discovery-only 接线，Claude Code、Cursor、OpenCode 还会补充
+  bootstrap-capable 的启动路由能力
 - controller runtime 已经能执行 `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
 - plan 之后会显式维护 `execution_strategy`：`subagent-driven`、`inline`、`unresolved`
 - execution-strategy 优先级固定为：`owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
