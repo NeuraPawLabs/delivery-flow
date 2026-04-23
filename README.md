@@ -5,7 +5,7 @@ for keeping one task plan moving through
 `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait` without
 handing the loop back to the owner after each stage.
 
-[中文文档](./README.zh-CN.md) | [Codex Guide](./docs/platforms/codex.md) | [Claude/Cursor Guide](./docs/platforms/claude.md) | [OpenCode Guide](./docs/platforms/opencode.md)
+[中文文档](./README.zh-CN.md) | [Architecture](./docs/architecture.md) | [Codex Guide](./docs/platforms/codex.md) | [Claude/Cursor Guide](./docs/platforms/claude.md) | [OpenCode Guide](./docs/platforms/opencode.md)
 
 docs/ is human-facing. skills/ is agent-facing and contains the AI-facing skill entrypoints and supporting references.
 
@@ -16,7 +16,9 @@ Platform capability split:
 
 Shared scope: the repository is not Codex-only. It publishes one shared skill
 surface, with platform differences limited to discovery-only versus
-bootstrap-capable startup behavior.
+bootstrap-capable startup behavior. Codex remains discovery-only and has no
+session-start bootstrap parity. For platform shorthand, this remains the
+Codex versus Claude/Cursor/OpenCode capability split.
 
 ## Status
 
@@ -92,6 +94,10 @@ OpenCode is also bootstrap-capable. Its plugin appends a strong root-routing boo
 
 - [README.zh-CN](./README.zh-CN.md)
   Chinese human overview.
+- [docs/architecture.md](./docs/architecture.md)
+  Human-facing architecture and call-flow guide.
+- [docs/architecture.zh-CN.md](./docs/architecture.zh-CN.md)
+  Chinese human-facing architecture and call-flow guide.
 - [docs/platforms/codex.md](./docs/platforms/codex.md)
   Human-facing Codex install and usage guide.
 - [docs/platforms/codex.zh-CN.md](./docs/platforms/codex.zh-CN.md)
@@ -138,6 +144,8 @@ OpenCode is also bootstrap-capable. Its plugin appends a strong root-routing boo
   Runtime-facing `superpowers-backed` and `fallback` adapters.
 - `docs/platforms/`
   Human-facing installation guides for Codex, Claude Code, Cursor, and OpenCode.
+- `docs/architecture.md`
+  Human-facing architecture walkthrough for the markdown contract to runtime flow.
 - `skills/delivery-flow/`
   Execution skill entrypoint plus supporting AI-facing contracts and verification references.
 - `tests/`
