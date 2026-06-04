@@ -38,3 +38,19 @@ def test_root_routing_contract_requires_new_turn_reentry_checks() -> None:
 
     assert "new user turn" in routing_doc
     assert "new user turn" in bootstrap_doc
+
+
+def test_root_routing_contract_distinguishes_development_thread_review_from_standalone_review() -> None:
+    routing_doc = _read("skills/using-delivery-flow/SKILL.md")
+    bootstrap_doc = _read("skills/using-delivery-flow/bootstrap-contract.md")
+
+    for marker in (
+        "review-only",
+        "analysis-only",
+        "comparison-only",
+        "inside an active delivery thread",
+        "outside an active delivery thread",
+        "do not yield merely because the current phase is review",
+    ):
+        assert marker in routing_doc
+        assert marker in bootstrap_doc

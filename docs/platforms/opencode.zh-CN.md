@@ -62,6 +62,7 @@ Select-String -Path .opencode/plugins/delivery-flow.js -Pattern "config\\(config
 ```bash
 test -f skills/using-delivery-flow/SKILL.md
 test -f skills/delivery-flow/SKILL.md
+test -f skills/implementation-review/SKILL.md
 ```
 
 Windows PowerShell 可以用：
@@ -69,6 +70,7 @@ Windows PowerShell 可以用：
 ```powershell
 Test-Path skills/using-delivery-flow/SKILL.md
 Test-Path skills/delivery-flow/SKILL.md
+Test-Path skills/implementation-review/SKILL.md
 ```
 
 运行本任务对应的测试切片：

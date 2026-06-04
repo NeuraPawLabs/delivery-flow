@@ -63,6 +63,7 @@ Check the shared skill files:
 ```bash
 test -f skills/using-delivery-flow/SKILL.md
 test -f skills/delivery-flow/SKILL.md
+test -f skills/implementation-review/SKILL.md
 ```
 
 On Windows PowerShell:
@@ -70,6 +71,7 @@ On Windows PowerShell:
 ```powershell
 Test-Path skills/using-delivery-flow/SKILL.md
 Test-Path skills/delivery-flow/SKILL.md
+Test-Path skills/implementation-review/SKILL.md
 ```
 
 Run the focused test slice:

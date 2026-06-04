@@ -32,6 +32,7 @@ Do not re-route on every internal phase boundary once `delivery-flow` already ow
 
 - a plan already exists and the same thread must continue
 - review feedback has arrived and the same thread must continue through fix/review continuation
+- the current phase is review, analysis, or comparison inside an active delivery thread
 - the owner is continuing an existing delivery thread on a new user turn
 - one main agent must keep the same thread moving until `pass` or owner input is required
 
@@ -39,6 +40,7 @@ Do not re-route on every internal phase boundary once `delivery-flow` already ow
 
 - the request is only requirement clarification or brainstorming for a brand-new task
 - the request is only to write a plan for a single phase
+- the request is standalone review, analysis, or comparison outside an active delivery thread
 - the request is a one-shot task that does not require ongoing delivery ownership
 - only a single phase is needed, so `delivery-flow` should yield rather than take ownership
 

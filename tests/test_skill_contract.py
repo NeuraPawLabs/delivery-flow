@@ -300,9 +300,10 @@ def test_skill_frontmatter_declares_neighbor_skills_as_stage_specific_or_subordi
 def test_shared_skill_surface_exists() -> None:
     assert (REPO_ROOT / "skills" / "delivery-flow" / "SKILL.md").is_file()
     assert (REPO_ROOT / "skills" / "using-delivery-flow" / "SKILL.md").is_file()
+    assert (REPO_ROOT / "skills" / "implementation-review" / "SKILL.md").is_file()
 
 
-def test_codex_shared_install_surface_exposes_both_skills(tmp_path: Path) -> None:
+def test_codex_shared_install_surface_exposes_shared_skills(tmp_path: Path) -> None:
     install_root = tmp_path / ".agents" / "skills"
     install_root.mkdir(parents=True)
     install_path = install_root / "delivery-flow"
@@ -311,10 +312,95 @@ def test_codex_shared_install_surface_exposes_both_skills(tmp_path: Path) -> Non
     assert install_path.is_symlink()
     assert (install_path / "delivery-flow" / "SKILL.md").is_file()
     assert (install_path / "using-delivery-flow" / "SKILL.md").is_file()
+    assert (install_path / "implementation-review" / "SKILL.md").is_file()
 
 
 def test_root_skill_entrypoint_is_removed() -> None:
     assert not (REPO_ROOT / "SKILL.md").exists()
+
+
+def test_implementation_review_is_a_general_project_review_skill() -> None:
+    skill_doc = _read("skills/implementation-review/SKILL.md")
+    description = _normalized(_frontmatter_value(skill_doc, "description"))
+    workflow = _section_body(skill_doc, "Review Workflow")
+    evidence = _section_body(skill_doc, "Evidence Requirements")
+    dimensions = _section_body(skill_doc, "Review Dimensions")
+    result_model = _section_body(skill_doc, "Result Model")
+    output_contract = _section_body(skill_doc, "Output Contract")
+
+    assert _frontmatter_value(skill_doc, "name") == "implementation-review"
+    assert "review" in description
+    assert "implementation" in description
+    assert "spec" in description
+    assert "architecture" in description
+    assert "design" in description
+    assert "any project" in description
+
+    for marker in (
+        "gather context",
+        "find the active implementation plan",
+        "treat specs without an associated plan as not yet in development",
+        "build a requirement checklist",
+        "inspect the implementation",
+        "inspect tests and verification",
+        "classify the result",
+    ):
+        assert marker in _normalized(workflow)
+
+    for marker in (
+        "do not claim pass without evidence",
+        "do not review against a spec directly until a plan links it to the current implementation",
+        "needs_owner_decision",
+        "spec unavailable",
+        "commands run",
+        "commands not run",
+    ):
+        assert marker in _normalized(evidence)
+
+    for marker in (
+        "spec traceability",
+        "behavior correctness",
+        "test quality",
+        "architecture fit",
+        "design pattern appropriateness",
+        "maintainability",
+        "security",
+        "performance",
+        "concurrency",
+        "operational readiness",
+        "ux / api ergonomics",
+    ):
+        assert marker in _normalized(dimensions)
+
+    for marker in ("pass", "blocker", "needs_owner_decision"):
+        assert marker in _normalized(result_model)
+
+    for marker in (
+        "result:",
+        "findings:",
+        "severity:",
+        "location:",
+        "requirement:",
+        "impact:",
+        "fix:",
+        "verification:",
+        "residual risk:",
+        "next action:",
+        "use delivery-flow to fix the implementation-review findings",
+    ):
+        assert marker in _normalized(output_contract)
+
+    for marker in (
+        "human-facing review output",
+        "user's current-turn language",
+        "keep contract field names",
+        "code identifiers",
+        "file paths",
+        "commands",
+        "error messages",
+        "api names",
+    ):
+        assert marker in _normalized(output_contract)
 
 
 def test_using_delivery_flow_is_a_root_routing_skill() -> None:
@@ -333,7 +419,18 @@ def test_using_delivery_flow_is_a_root_routing_skill() -> None:
     assert "before any response" in _normalized(root_rule)
     assert "using-delivery-flow" in _normalized(root_rule)
     assert "route into `delivery-flow`" in _normalized(route_into)
+    assert "review-only" in _normalized(route_into)
+    assert "analysis-only" in _normalized(route_into)
+    assert "comparison-only" in _normalized(route_into)
+    assert "inside an active delivery thread" in _normalized(route_into)
     assert "single-phase work should yield" in _normalized(yield_to)
+    assert "review-only" in _normalized(yield_to)
+    assert "analysis-only" in _normalized(yield_to)
+    assert "comparison-only" in _normalized(yield_to)
+    assert "outside an active delivery thread" in _normalized(yield_to)
+    assert "do not yield merely because the current phase is review" in _normalized(
+        hard_rules
+    )
     assert "plan presence alone is not enough to yield" in _normalized(hard_rules)
     assert "review/fix continuation is a strong signal" in _normalized(hard_rules)
     assert "do not duplicate `delivery-flow` execution semantics" in _normalized(hard_rules)
@@ -350,14 +447,33 @@ def test_using_delivery_flow_bootstrap_contract_file_keeps_shared_root_routing_r
     assert "using-delivery-flow" in _normalized(root_rule)
     assert "ongoing delivery thread" in _normalized(root_rule)
     assert "route into `delivery-flow`" in _normalized(route_into)
+    assert "review-only" in _normalized(route_into)
+    assert "analysis-only" in _normalized(route_into)
+    assert "comparison-only" in _normalized(route_into)
+    assert "inside an active delivery thread" in _normalized(route_into)
     assert "single-phase work should yield" in _normalized(yield_to)
+    assert "review-only" in _normalized(yield_to)
+    assert "analysis-only" in _normalized(yield_to)
+    assert "comparison-only" in _normalized(yield_to)
+    assert "outside an active delivery thread" in _normalized(yield_to)
     assert "plan presence alone is not enough to yield" in _normalized(hard_rules)
     assert "review/fix continuation is a strong signal" in _normalized(hard_rules)
+    assert "do not yield merely because the current phase is review" in _normalized(hard_rules)
+
+
+def test_using_delivery_flow_routing_docs_declare_sync_requirement() -> None:
+    routing_doc = _read("skills/using-delivery-flow/SKILL.md")
+    bootstrap_doc = _read("skills/using-delivery-flow/bootstrap-contract.md")
+
+    assert "keep this routing contract synchronized" in _normalized(routing_doc)
+    assert "keep this routing contract synchronized" in _normalized(bootstrap_doc)
 
 
 def test_using_delivery_flow_bootstrap_contract_aligns_with_root_routing_skill_sections() -> None:
     routing_doc = _read("skills/using-delivery-flow/SKILL.md")
     bootstrap_doc = _read("skills/using-delivery-flow/bootstrap-contract.md")
+
+    assert _section_headings(bootstrap_doc) == _section_headings(routing_doc)
 
     for heading in (
         "Root Rule",
@@ -414,7 +530,13 @@ def test_skill_doc_declares_routing_contract_via_sections_and_markers() -> None:
 
     assert "a plan already exists" in when_to_take_ownership
     assert "review feedback has arrived" in when_to_take_ownership
+    assert "review, analysis, or comparison inside an active delivery thread" in _normalized(
+        when_to_take_ownership
+    )
     assert "only a single phase is needed" in when_to_yield
+    assert "review, analysis, or comparison outside an active delivery thread" in _normalized(
+        when_to_yield
+    )
     assert "task by task" in use_it_when
 
 

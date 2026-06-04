@@ -78,6 +78,18 @@ Use these scenarios to check that the skill still shapes behavior correctly.
 - owner supplies new review findings
 - expect the workflow to stay inside `delivery-flow`
 
+## Scenario 8B.1: Review Analysis Or Comparison Inside Active Delivery Thread
+
+- a run is already active
+- owner asks for review, analysis, or comparison inside an active delivery thread
+- expect the workflow to stay inside `delivery-flow`
+
+## Scenario 8B.2: Standalone Review Analysis Or Comparison Outside Active Delivery Thread
+
+- no run is active
+- owner asks for standalone review, analysis, or comparison outside an active delivery thread
+- expect `delivery-flow` to yield to the normal skill ecosystem
+
 ## Scenario 8C: Plan Presence Alone Does Not Select executing-plans
 
 - both `delivery-flow` and `executing-plans` appear superficially applicable

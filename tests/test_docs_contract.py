@@ -99,6 +99,7 @@ def test_codex_install_docs_cover_discovery_install_and_verification() -> None:
         "~/.agents/skills",
         "skills/delivery-flow",
         "skills/using-delivery-flow",
+        "skills/implementation-review",
         "`uv` for local verification",
         "https://github.com/neurapawlabs/delivery-flow.git",
         "windows",
@@ -133,11 +134,13 @@ def test_platform_docs_cover_bootstrap_install_paths() -> None:
         "~/.agents/skills",
         "skills/delivery-flow",
         "skills/using-delivery-flow",
+        "skills/implementation-review",
     )
     _assert_mentions(
         readme_codex,
         "native skill discovery",
         "using-delivery-flow",
+        "implementation-review",
         "codex is discovery-only",
         "discovery-only",
         "does not inject a session-start bootstrap",
@@ -176,6 +179,7 @@ def test_platform_docs_cover_bootstrap_install_paths() -> None:
         "skills/",
         "directory",
         "using-delivery-flow",
+        "implementation-review",
         "bootstrap",
         "bootstrap-capable",
         "before any response",
@@ -219,6 +223,7 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
         "ai skill files",
         "docs/ is human-facing",
         "skills/ is agent-facing",
+        "implementation-review",
         "codex is discovery-only",
         "no session-start bootstrap parity",
         "claude code, cursor, and opencode are bootstrap-capable",
@@ -245,6 +250,7 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     _assert_markdown_link(readme, "./skills/delivery-flow/verification-scenarios.md")
     _assert_markdown_link(readme, "./skills/delivery-flow/SKILL.md")
     _assert_markdown_link(readme, "./skills/using-delivery-flow/SKILL.md")
+    _assert_markdown_link(readme, "./skills/implementation-review/SKILL.md")
     _assert_mentions(readme, "required changes", "testing issues", "maintainability issues")
     _assert_verification_markers(
         readme,
@@ -277,6 +283,7 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
         "ai skill 文件",
         "docs/ 只放给人类看的文档",
         "skills/ 是给 agent 读取的",
+        "implementation-review",
         "codex is discovery-only",
         "没有 session-start bootstrap parity",
         "claude code, cursor, and opencode are bootstrap-capable",
@@ -302,6 +309,7 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     _assert_markdown_link(readme_zh, "./skills/delivery-flow/verification-scenarios.md")
     _assert_markdown_link(readme_zh, "./skills/delivery-flow/SKILL.md")
     _assert_markdown_link(readme_zh, "./skills/using-delivery-flow/SKILL.md")
+    _assert_markdown_link(readme_zh, "./skills/implementation-review/SKILL.md")
     _assert_mentions(readme_zh, "required changes", "testing issues", "maintainability issues")
     _assert_verification_markers(
         readme_zh,
@@ -374,6 +382,7 @@ def test_platform_docs_have_zh_cn_parity() -> None:
     _assert_mentions(
         readme_codex_zh,
         "using-delivery-flow",
+        "implementation-review",
         "原生 skill discovery",
         "codex is discovery-only",
         "discovery-only",
@@ -408,6 +417,7 @@ def test_platform_docs_have_zh_cn_parity() -> None:
         "skills/",
         "目录",
         "using-delivery-flow",
+        "implementation-review",
         "bootstrap",
         "bootstrap-capable",
         "before any response",
@@ -450,6 +460,8 @@ def test_verification_scenarios_cover_execution_strategy_edges() -> None:
         "post-plan orchestration",
         "review feedback arrives mid-execution",
         "stay inside `delivery-flow`",
+        "review, analysis, or comparison inside an active delivery thread",
+        "standalone review, analysis, or comparison outside an active delivery thread",
         "new feature, no ongoing thread",
         "yield",
         "next user turn",

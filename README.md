@@ -22,7 +22,7 @@ Codex versus Claude/Cursor/OpenCode capability split.
 
 ## Status
 
-- official skill entrypoints live under `skills/delivery-flow/` and `skills/using-delivery-flow/`
+- official skill entrypoints live under `skills/delivery-flow/`, `skills/using-delivery-flow/`, and `skills/implementation-review/`
 - Codex install path is `~/.agents/skills/delivery-flow`, and Codex is discovery-only today
 - Claude Code and Cursor are bootstrap-capable and use `SessionStart` bootstrap via `.claude-plugin` and `.cursor-plugin`
 - OpenCode is bootstrap-capable and auto-loads `.opencode/plugins/delivery-flow.js`
@@ -68,6 +68,8 @@ Shared skill surface:
 ```text
 ~/.agents/skills/delivery-flow/
 ├── delivery-flow/
+│   └── SKILL.md
+├── implementation-review/
 │   └── SKILL.md
 └── using-delivery-flow/
     └── SKILL.md
@@ -123,6 +125,8 @@ OpenCode is also bootstrap-capable. Its plugin appends a strong root-routing boo
   Supporting verification scenarios for the execution skill.
 - [skills/using-delivery-flow/SKILL.md](./skills/using-delivery-flow/SKILL.md)
   AI-facing root routing skill contract.
+- [skills/implementation-review/SKILL.md](./skills/implementation-review/SKILL.md)
+  AI-facing general implementation review skill for spec compliance, architecture fit, test quality, and delivery readiness.
 - [.codex/INSTALL.md](./.codex/INSTALL.md)
   Agent-facing install instructions for Codex raw fetch flows.
 
@@ -144,6 +148,8 @@ OpenCode is also bootstrap-capable. Its plugin appends a strong root-routing boo
   Human-facing architecture walkthrough for the markdown contract to runtime flow.
 - `skills/delivery-flow/`
   Execution skill entrypoint plus supporting AI-facing contracts and verification references.
+- `skills/implementation-review/`
+  General implementation review skill for project-independent review.
 - `tests/`
   Repository verification baseline.
 
@@ -157,7 +163,7 @@ OpenCode is also bootstrap-capable. Its plugin appends a strong root-routing boo
 | --- | --- |
 | A new task needs requirement clarification or design exploration | `brainstorming` |
 | A design is approved and the immediate next job is to write an implementation plan | `writing-plans` |
-| A plan exists and the work can finish through linear execution | `executing-plans` |
+| A plan exists, no ongoing delivery ownership is needed, and the work can finish through stable linear execution | `executing-plans` |
 | Even if a plan already exists, the work is still an ongoing delivery thread with likely review/fix continuation | `delivery-flow` |
 | Owner keeps adding review findings and expects one main agent to continue the thread | `delivery-flow` |
 

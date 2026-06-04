@@ -54,12 +54,15 @@ The shared directory should look like this:
 ~/.agents/skills/delivery-flow/
 ├── delivery-flow/
 │   └── SKILL.md
+├── implementation-review/
+│   └── SKILL.md
 └── using-delivery-flow/
     └── SKILL.md
 ```
 
-This install path exposes both `skills/delivery-flow` and
-`skills/using-delivery-flow` without requiring `AGENTS.md`.
+This install path exposes `skills/delivery-flow`,
+`skills/using-delivery-flow`, and `skills/implementation-review` without
+requiring `AGENTS.md`.
 
 ## Capability Model
 
@@ -78,6 +81,7 @@ test -L ~/.agents/skills/delivery-flow
 ls -l ~/.agents/skills/delivery-flow
 test -f ~/.agents/skills/delivery-flow/delivery-flow/SKILL.md
 test -f ~/.agents/skills/delivery-flow/using-delivery-flow/SKILL.md
+test -f ~/.agents/skills/delivery-flow/implementation-review/SKILL.md
 ```
 
 On Windows PowerShell:
@@ -86,6 +90,7 @@ On Windows PowerShell:
 Get-Item "$env:USERPROFILE\.agents\skills\delivery-flow"
 Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\delivery-flow\SKILL.md"
 Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\using-delivery-flow\SKILL.md"
+Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\implementation-review\SKILL.md"
 ```
 
 Run the repo verification baseline:
@@ -100,6 +105,7 @@ Expected result:
 - the symlink resolves to the repo `skills/` directory
 - `delivery-flow/SKILL.md` exists at the linked path
 - `using-delivery-flow/SKILL.md` exists at the linked path
+- `implementation-review/SKILL.md` exists at the linked path
 - `uv run pytest` completes successfully
 - all repository tests pass
 

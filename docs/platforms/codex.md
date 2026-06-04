@@ -40,9 +40,10 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 
 Codex is discovery-only today.
 
-This install exposes `skills/using-delivery-flow` and `skills/delivery-flow`
-through native skill discovery, but it does not inject a session-start
-bootstrap. There is no session-start bootstrap parity here.
+This install exposes `skills/using-delivery-flow`, `skills/delivery-flow`, and
+`skills/implementation-review` through native skill discovery, but it does not
+inject a session-start bootstrap. There is no session-start bootstrap parity
+here.
 
 Bootstrap-capable platforms such as Claude Code, Cursor, and OpenCode can
 front-load the root routing contract at session start. Codex cannot claim that
@@ -62,11 +63,13 @@ cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFI
 Codex scans `~/.agents/skills/` at session start, reads `SKILL.md`
 frontmatter, and loads skills on demand through native skill discovery. This
 is discovery-only wiring, not bootstrap parity. The shared install surface
-exposes both controller skills:
+exposes the shared skills:
 
 ```text
 ~/.agents/skills/delivery-flow/
 ├── delivery-flow/
+│   └── SKILL.md
+├── implementation-review/
 │   └── SKILL.md
 └── using-delivery-flow/
     └── SKILL.md
@@ -74,6 +77,7 @@ exposes both controller skills:
 
 - `using-delivery-flow` is the root routing skill
 - `delivery-flow` is the execution skill
+- `implementation-review` is the general implementation review skill
 - no `AGENTS.md` file is required
 
 Once installed, the skill exposes one controller contract with two explicit
@@ -121,6 +125,7 @@ Codex should discover the skills automatically when:
 
 - you mention `delivery-flow` by name
 - you mention `using-delivery-flow` by name
+- you mention `implementation-review` by name
 - the task matches the `SKILL.md` descriptions
 
 ## Verify Installation
@@ -132,6 +137,7 @@ test -L ~/.agents/skills/delivery-flow
 ls -l ~/.agents/skills/delivery-flow
 test -f ~/.agents/skills/delivery-flow/delivery-flow/SKILL.md
 test -f ~/.agents/skills/delivery-flow/using-delivery-flow/SKILL.md
+test -f ~/.agents/skills/delivery-flow/implementation-review/SKILL.md
 ```
 
 On Windows PowerShell:
@@ -139,6 +145,7 @@ On Windows PowerShell:
 ```powershell
 Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\delivery-flow\SKILL.md"
 Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\using-delivery-flow\SKILL.md"
+Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\implementation-review\SKILL.md"
 Get-Item "$env:USERPROFILE\.agents\skills\delivery-flow"
 ```
 
@@ -194,14 +201,16 @@ rm -rf ~/.codex/delivery-flow
 1. Verify the symlink: `ls -la ~/.agents/skills/delivery-flow`
 2. Check the skill entries exist: `test -f ~/.agents/skills/delivery-flow/delivery-flow/SKILL.md`
 3. Check the routing skill exists: `test -f ~/.agents/skills/delivery-flow/using-delivery-flow/SKILL.md`
-4. Restart Codex. Skill discovery happens at session start.
+4. Check the review skill exists: `test -f ~/.agents/skills/delivery-flow/implementation-review/SKILL.md`
+5. Restart Codex. Skill discovery happens at session start.
 
 On Windows PowerShell:
 
 1. Check the install entry: `Get-Item "$env:USERPROFILE\.agents\skills\delivery-flow"`
 2. Check the execution skill: `Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\delivery-flow\SKILL.md"`
 3. Check the routing skill: `Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\using-delivery-flow\SKILL.md"`
-4. Restart Codex.
+4. Check the review skill: `Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\implementation-review\SKILL.md"`
+5. Restart Codex.
 
 ### Tests do not run
 

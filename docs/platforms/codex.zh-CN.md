@@ -39,8 +39,9 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 
 Codex is discovery-only。
 
-这个安装会暴露 `skills/using-delivery-flow` 和 `skills/delivery-flow`，但不会注入
-session-start bootstrap，也就是没有 session-start bootstrap parity。
+这个安装会暴露 `skills/using-delivery-flow`、`skills/delivery-flow` 和
+`skills/implementation-review`，但不会注入 session-start bootstrap，也就是没有
+session-start bootstrap parity。
 
 Claude Code、Cursor、OpenCode 这类 bootstrap-capable 平台可以在会话启动时前置根路由合约；
 Codex 在真正的 bootstrap surface 出现前不能声称具备同等能力。
@@ -58,11 +59,13 @@ cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFI
 
 Codex 会在会话启动时扫描 `~/.agents/skills/`，读取 `SKILL.md`
 frontmatter，并通过原生 skill discovery 按需加载 skill。这是 discovery-only
-接线，不是 bootstrap parity。共享安装面会暴露两个 controller skill：
+接线，不是 bootstrap parity。共享安装面会暴露共享 skill：
 
 ```text
 ~/.agents/skills/delivery-flow/
 ├── delivery-flow/
+│   └── SKILL.md
+├── implementation-review/
 │   └── SKILL.md
 └── using-delivery-flow/
     └── SKILL.md
@@ -70,6 +73,7 @@ frontmatter，并通过原生 skill discovery 按需加载 skill。这是 discov
 
 - `using-delivery-flow` 是根路由 skill
 - `delivery-flow` 是执行 skill
+- `implementation-review` 是通用 implementation review skill
 - 不需要 `AGENTS.md`
 
 安装完成后，这个 skill 提供一条稳定的 controller contract，并支持两个显式 mode：
@@ -115,6 +119,7 @@ Codex 通常会在三种情况下自动发现它们：
 
 - 你直接提到 `delivery-flow`
 - 你直接提到 `using-delivery-flow`
+- 你直接提到 `implementation-review`
 - 任务描述命中 `SKILL.md` 里的触发条件
 
 ## 安装验证
@@ -126,6 +131,7 @@ test -L ~/.agents/skills/delivery-flow
 ls -l ~/.agents/skills/delivery-flow
 test -f ~/.agents/skills/delivery-flow/delivery-flow/SKILL.md
 test -f ~/.agents/skills/delivery-flow/using-delivery-flow/SKILL.md
+test -f ~/.agents/skills/delivery-flow/implementation-review/SKILL.md
 ```
 
 Windows PowerShell 可以用：
@@ -133,6 +139,7 @@ Windows PowerShell 可以用：
 ```powershell
 Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\delivery-flow\SKILL.md"
 Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\using-delivery-flow\SKILL.md"
+Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\implementation-review\SKILL.md"
 Get-Item "$env:USERPROFILE\.agents\skills\delivery-flow"
 ```
 
@@ -187,14 +194,16 @@ rm -rf ~/.codex/delivery-flow
 1. 检查软链接：`ls -la ~/.agents/skills/delivery-flow`
 2. 检查执行 skill：`test -f ~/.agents/skills/delivery-flow/delivery-flow/SKILL.md`
 3. 检查路由 skill：`test -f ~/.agents/skills/delivery-flow/using-delivery-flow/SKILL.md`
-4. 重启 Codex。skill discovery 发生在会话启动时。
+4. 检查 review skill：`test -f ~/.agents/skills/delivery-flow/implementation-review/SKILL.md`
+5. 重启 Codex。skill discovery 发生在会话启动时。
 
 Windows PowerShell 可以用：
 
 1. 检查安装入口：`Get-Item "$env:USERPROFILE\.agents\skills\delivery-flow"`
 2. 检查执行 skill：`Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\delivery-flow\SKILL.md"`
 3. 检查路由 skill：`Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\using-delivery-flow\SKILL.md"`
-4. 重启 Codex。
+4. 检查 review skill：`Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\implementation-review\SKILL.md"`
+5. 重启 Codex。
 
 ### 测试跑不起来
 
