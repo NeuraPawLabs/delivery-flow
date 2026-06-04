@@ -97,6 +97,9 @@ def test_codex_install_docs_cover_discovery_install_and_verification() -> None:
         install_doc,
         "delivery-flow",
         "~/.agents/skills",
+        "~/.agents/skills/delivery-flow/skill.md",
+        "~/.agents/skills/using-delivery-flow/skill.md",
+        "~/.agents/skills/implementation-review/skill.md",
         "skills/delivery-flow",
         "skills/using-delivery-flow",
         "skills/implementation-review",
@@ -115,6 +118,18 @@ def test_codex_install_docs_cover_discovery_install_and_verification() -> None:
         "claude code",
         "cursor",
         "opencode",
+        "do not symlink the repository `skills/` directory",
+        "codex debug prompt-input",
+        "delivery-flow:delivery-flow",
+        "delivery-flow:using-delivery-flow",
+        "delivery-flow:implementation-review",
+        "the `/skills` ui may display them as namespaced entries",
+    )
+    assert "~/.agents/skills/delivery-flow/using-delivery-flow/skill.md" not in _normalized(
+        install_doc
+    )
+    assert "~/.agents/skills/delivery-flow/implementation-review/skill.md" not in _normalized(
+        install_doc
     )
     _assert_verification_markers(
         install_doc,
@@ -132,6 +147,9 @@ def test_platform_docs_cover_bootstrap_install_paths() -> None:
     _assert_mentions(
         codex_install,
         "~/.agents/skills",
+        "~/.agents/skills/delivery-flow/skill.md",
+        "~/.agents/skills/using-delivery-flow/skill.md",
+        "~/.agents/skills/implementation-review/skill.md",
         "skills/delivery-flow",
         "skills/using-delivery-flow",
         "skills/implementation-review",
@@ -151,6 +169,17 @@ def test_platform_docs_cover_bootstrap_install_paths() -> None:
         "test-path",
         "get-item",
         "fetch and follow instructions from https://raw.githubusercontent.com/neurapawlabs/delivery-flow/main/.codex/install.md",
+        "codex debug prompt-input",
+        "delivery-flow:delivery-flow",
+        "delivery-flow:using-delivery-flow",
+        "delivery-flow:implementation-review",
+        "the `/skills` ui may display them as namespaced entries",
+    )
+    assert "~/.agents/skills/delivery-flow/using-delivery-flow/skill.md" not in _normalized(
+        codex_install
+    )
+    assert "~/.agents/skills/delivery-flow/implementation-review/skill.md" not in _normalized(
+        codex_install
     )
     _assert_mentions(
         readme_claude,
@@ -437,9 +466,10 @@ def test_verification_scenarios_cover_execution_strategy_edges() -> None:
 
     _assert_mentions(
         scenarios_doc,
-        "~/.agents/skills/delivery-flow",
+        "direct entries under `~/.agents/skills/`",
         "delivery-flow/skill.md",
         "using-delivery-flow/skill.md",
+        "implementation-review/skill.md",
         "execution strategy",
         "one post-plan execution-strategy question",
         "no repeated execution-choice question",

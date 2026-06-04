@@ -7,7 +7,9 @@ Enable `delivery-flow` as a local Codex skill through native skill discovery.
 ```bash
 git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/delivery-flow
 mkdir -p ~/.agents/skills
-ln -s ~/.codex/delivery-flow/skills ~/.agents/skills/delivery-flow
+ln -s ~/.codex/delivery-flow/skills/delivery-flow ~/.agents/skills/delivery-flow
+ln -s ~/.codex/delivery-flow/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
+ln -s ~/.codex/delivery-flow/skills/implementation-review ~/.agents/skills/implementation-review
 ```
 
 Then restart Codex.
@@ -25,16 +27,21 @@ Then restart Codex.
    git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/delivery-flow
    ```
 
-2. **Expose the shared skills directory:**
+2. **Expose each shared skill directory:**
    ```bash
    mkdir -p ~/.agents/skills
-   ln -s ~/.codex/delivery-flow/skills ~/.agents/skills/delivery-flow
+   ln -s ~/.codex/delivery-flow/skills/delivery-flow ~/.agents/skills/delivery-flow
+   ln -s ~/.codex/delivery-flow/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
+   ln -s ~/.codex/delivery-flow/skills/implementation-review ~/.agents/skills/implementation-review
    ```
 
-   If the link already exists:
+   If old links already exist:
    ```bash
    rm ~/.agents/skills/delivery-flow
-   ln -s ~/.codex/delivery-flow/skills ~/.agents/skills/delivery-flow
+   rm -f ~/.agents/skills/using-delivery-flow ~/.agents/skills/implementation-review
+   ln -s ~/.codex/delivery-flow/skills/delivery-flow ~/.agents/skills/delivery-flow
+   ln -s ~/.codex/delivery-flow/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
+   ln -s ~/.codex/delivery-flow/skills/implementation-review ~/.agents/skills/implementation-review
    ```
 
 3. **Restart Codex** so native skill discovery reloads.
@@ -45,13 +52,15 @@ Use a junction instead of a symlink:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.agents\skills"
-cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills\delivery-flow"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\using-delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills\using-delivery-flow"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\implementation-review" "$env:USERPROFILE\.codex\delivery-flow\skills\implementation-review"
 ```
 
-The shared directory should look like this:
+The shared skill entries should look like this:
 
 ```text
-~/.agents/skills/delivery-flow/
+~/.agents/skills/
 ├── delivery-flow/
 │   └── SKILL.md
 ├── implementation-review/
@@ -60,9 +69,15 @@ The shared directory should look like this:
     └── SKILL.md
 ```
 
-This install path exposes `skills/delivery-flow`,
-`skills/using-delivery-flow`, and `skills/implementation-review` without
-requiring `AGENTS.md`.
+Each Codex skill must be exposed as its own direct child of
+`~/.agents/skills`. Do not symlink the repository `skills/` directory as
+`~/.agents/skills/delivery-flow`, because that makes the three skills appear as
+nested content under one entry and can confuse skill selector display.
+
+Codex may display these entries with a source namespace, such as
+`delivery-flow:delivery-flow`, `delivery-flow:using-delivery-flow`, and
+`delivery-flow:implementation-review`. That display shape is acceptable as long
+as all three skills are discoverable.
 
 ## Capability Model
 
@@ -78,19 +93,23 @@ Check the shared skill directory:
 
 ```bash
 test -L ~/.agents/skills/delivery-flow
-ls -l ~/.agents/skills/delivery-flow
-test -f ~/.agents/skills/delivery-flow/delivery-flow/SKILL.md
-test -f ~/.agents/skills/delivery-flow/using-delivery-flow/SKILL.md
-test -f ~/.agents/skills/delivery-flow/implementation-review/SKILL.md
+test -L ~/.agents/skills/using-delivery-flow
+test -L ~/.agents/skills/implementation-review
+test -f ~/.agents/skills/delivery-flow/SKILL.md
+test -f ~/.agents/skills/using-delivery-flow/SKILL.md
+test -f ~/.agents/skills/implementation-review/SKILL.md
+codex debug prompt-input "list delivery-flow skills" | rg "delivery-flow:(delivery-flow|using-delivery-flow|implementation-review)"
 ```
 
 On Windows PowerShell:
 
 ```powershell
 Get-Item "$env:USERPROFILE\.agents\skills\delivery-flow"
-Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\delivery-flow\SKILL.md"
-Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\using-delivery-flow\SKILL.md"
-Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\implementation-review\SKILL.md"
+Get-Item "$env:USERPROFILE\.agents\skills\using-delivery-flow"
+Get-Item "$env:USERPROFILE\.agents\skills\implementation-review"
+Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\SKILL.md"
+Test-Path "$env:USERPROFILE\.agents\skills\using-delivery-flow\SKILL.md"
+Test-Path "$env:USERPROFILE\.agents\skills\implementation-review\SKILL.md"
 ```
 
 Run the repo verification baseline:
@@ -102,10 +121,14 @@ uv run pytest
 
 Expected result:
 
-- the symlink resolves to the repo `skills/` directory
-- `delivery-flow/SKILL.md` exists at the linked path
-- `using-delivery-flow/SKILL.md` exists at the linked path
-- `implementation-review/SKILL.md` exists at the linked path
+- each symlink resolves to its matching repo `skills/<skill-name>/` directory
+- `delivery-flow/SKILL.md` exists as a direct skill entry
+- `using-delivery-flow/SKILL.md` exists as a direct skill entry
+- `implementation-review/SKILL.md` exists as a direct skill entry
+- `codex debug prompt-input "list delivery-flow skills"` shows
+  `delivery-flow:delivery-flow`, `delivery-flow:using-delivery-flow`, and
+  `delivery-flow:implementation-review`
+- the `/skills` UI may display them as namespaced entries
 - `uv run pytest` completes successfully
 - all repository tests pass
 
@@ -117,8 +140,8 @@ git pull
 uv run pytest
 ```
 
-The `~/.agents/skills/delivery-flow` link keeps pointing at the updated repo
-skills directory.
+The `~/.agents/skills/<skill-name>` links keep pointing at the updated repo
+skill directories.
 
 For a fuller guide, see `docs/platforms/codex.md` in the repository.
 
@@ -138,12 +161,16 @@ this Codex path only publishes the shared skills for discovery.
 
 ```bash
 rm ~/.agents/skills/delivery-flow
+rm ~/.agents/skills/using-delivery-flow
+rm ~/.agents/skills/implementation-review
 ```
 
 On Windows PowerShell:
 
 ```powershell
 Remove-Item "$env:USERPROFILE\.agents\skills\delivery-flow" -Force
+Remove-Item "$env:USERPROFILE\.agents\skills\using-delivery-flow" -Force
+Remove-Item "$env:USERPROFILE\.agents\skills\implementation-review" -Force
 ```
 
 Optionally remove the clone:

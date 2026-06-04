@@ -23,7 +23,7 @@ Codex versus Claude/Cursor/OpenCode capability split.
 ## Status
 
 - official skill entrypoints live under `skills/delivery-flow/`, `skills/using-delivery-flow/`, and `skills/implementation-review/`
-- Codex install path is `~/.agents/skills/delivery-flow`, and Codex is discovery-only today
+- Codex install paths are direct skill entries under `~/.agents/skills/`, and Codex is discovery-only today
 - Claude Code and Cursor are bootstrap-capable and use `SessionStart` bootstrap via `.claude-plugin` and `.cursor-plugin`
 - OpenCode is bootstrap-capable and auto-loads `.opencode/plugins/delivery-flow.js`
 - default-use path enters the runtime directly
@@ -60,13 +60,15 @@ Manual install from the standard skill clone path:
 
 ```bash
 mkdir -p ~/.agents/skills
-ln -s ~/.codex/delivery-flow/skills ~/.agents/skills/delivery-flow
+ln -s ~/.codex/delivery-flow/skills/delivery-flow ~/.agents/skills/delivery-flow
+ln -s ~/.codex/delivery-flow/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
+ln -s ~/.codex/delivery-flow/skills/implementation-review ~/.agents/skills/implementation-review
 ```
 
 Shared skill surface:
 
 ```text
-~/.agents/skills/delivery-flow/
+~/.agents/skills/
 ├── delivery-flow/
 │   └── SKILL.md
 ├── implementation-review/

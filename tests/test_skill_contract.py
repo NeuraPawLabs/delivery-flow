@@ -306,13 +306,16 @@ def test_shared_skill_surface_exists() -> None:
 def test_codex_shared_install_surface_exposes_shared_skills(tmp_path: Path) -> None:
     install_root = tmp_path / ".agents" / "skills"
     install_root.mkdir(parents=True)
-    install_path = install_root / "delivery-flow"
-    install_path.symlink_to(REPO_ROOT / "skills", target_is_directory=True)
 
-    assert install_path.is_symlink()
-    assert (install_path / "delivery-flow" / "SKILL.md").is_file()
-    assert (install_path / "using-delivery-flow" / "SKILL.md").is_file()
-    assert (install_path / "implementation-review" / "SKILL.md").is_file()
+    for skill_name in ("delivery-flow", "using-delivery-flow", "implementation-review"):
+        install_path = install_root / skill_name
+        install_path.symlink_to(REPO_ROOT / "skills" / skill_name, target_is_directory=True)
+
+        assert install_path.is_symlink()
+        assert (install_path / "SKILL.md").is_file()
+
+    assert not (install_root / "delivery-flow" / "using-delivery-flow").exists()
+    assert not (install_root / "delivery-flow" / "implementation-review").exists()
 
 
 def test_root_skill_entrypoint_is_removed() -> None:

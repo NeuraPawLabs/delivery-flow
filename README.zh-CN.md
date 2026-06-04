@@ -24,7 +24,7 @@ bootstrap-capable。
 ## 当前状态
 
 - 官方 skill 入口位于 `skills/delivery-flow/`、`skills/using-delivery-flow/` 和 `skills/implementation-review/`
-- Codex 安装入口是 `~/.agents/skills/delivery-flow`，当前属于 discovery-only 模式
+- Codex 安装入口是 `~/.agents/skills/` 下的直接 skill 条目，当前属于 discovery-only 模式
 - Claude Code 和 Cursor 属于 bootstrap-capable 平台，并通过 `.claude-plugin` 与 `.cursor-plugin` 的 `SessionStart` bootstrap 接管路由
 - OpenCode 属于 bootstrap-capable 平台，并会自动加载 `.opencode/plugins/delivery-flow.js`
 - 默认主用路径会直接进入 runtime
@@ -61,13 +61,15 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 
 ```bash
 mkdir -p ~/.agents/skills
-ln -s ~/.codex/delivery-flow/skills ~/.agents/skills/delivery-flow
+ln -s ~/.codex/delivery-flow/skills/delivery-flow ~/.agents/skills/delivery-flow
+ln -s ~/.codex/delivery-flow/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
+ln -s ~/.codex/delivery-flow/skills/implementation-review ~/.agents/skills/implementation-review
 ```
 
 共享 skill 结构：
 
 ```text
-~/.agents/skills/delivery-flow/
+~/.agents/skills/
 ├── delivery-flow/
 │   └── SKILL.md
 ├── implementation-review/

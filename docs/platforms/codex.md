@@ -31,7 +31,9 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 2. Create the native skill discovery symlink:
    ```bash
    mkdir -p ~/.agents/skills
-   ln -s ~/.codex/delivery-flow/skills ~/.agents/skills/delivery-flow
+   ln -s ~/.codex/delivery-flow/skills/delivery-flow ~/.agents/skills/delivery-flow
+   ln -s ~/.codex/delivery-flow/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
+   ln -s ~/.codex/delivery-flow/skills/implementation-review ~/.agents/skills/implementation-review
    ```
 
 3. Restart Codex.
@@ -55,7 +57,9 @@ Use a junction instead of a symlink:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.agents\skills"
-cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills\delivery-flow"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\using-delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills\using-delivery-flow"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\implementation-review" "$env:USERPROFILE\.codex\delivery-flow\skills\implementation-review"
 ```
 
 ## How It Works
@@ -66,7 +70,7 @@ is discovery-only wiring, not bootstrap parity. The shared install surface
 exposes the shared skills:
 
 ```text
-~/.agents/skills/delivery-flow/
+~/.agents/skills/
 ├── delivery-flow/
 │   └── SKILL.md
 ├── implementation-review/
@@ -79,6 +83,12 @@ exposes the shared skills:
 - `delivery-flow` is the execution skill
 - `implementation-review` is the general implementation review skill
 - no `AGENTS.md` file is required
+
+Codex may show these entries with a source namespace, for example
+`delivery-flow:delivery-flow`, `delivery-flow:using-delivery-flow`, and
+`delivery-flow:implementation-review`. That is still a valid install as long as
+all three skills are discoverable. The `/skills` UI may display them as
+namespaced entries.
 
 Once installed, the skill exposes one controller contract with two explicit
 modes:
@@ -134,19 +144,23 @@ Verify the skill entries:
 
 ```bash
 test -L ~/.agents/skills/delivery-flow
-ls -l ~/.agents/skills/delivery-flow
-test -f ~/.agents/skills/delivery-flow/delivery-flow/SKILL.md
-test -f ~/.agents/skills/delivery-flow/using-delivery-flow/SKILL.md
-test -f ~/.agents/skills/delivery-flow/implementation-review/SKILL.md
+test -L ~/.agents/skills/using-delivery-flow
+test -L ~/.agents/skills/implementation-review
+test -f ~/.agents/skills/delivery-flow/SKILL.md
+test -f ~/.agents/skills/using-delivery-flow/SKILL.md
+test -f ~/.agents/skills/implementation-review/SKILL.md
+codex debug prompt-input "list delivery-flow skills" | rg "delivery-flow:(delivery-flow|using-delivery-flow|implementation-review)"
 ```
 
 On Windows PowerShell:
 
 ```powershell
-Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\delivery-flow\SKILL.md"
-Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\using-delivery-flow\SKILL.md"
-Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\implementation-review\SKILL.md"
 Get-Item "$env:USERPROFILE\.agents\skills\delivery-flow"
+Get-Item "$env:USERPROFILE\.agents\skills\using-delivery-flow"
+Get-Item "$env:USERPROFILE\.agents\skills\implementation-review"
+Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\SKILL.md"
+Test-Path "$env:USERPROFILE\.agents\skills\using-delivery-flow\SKILL.md"
+Test-Path "$env:USERPROFILE\.agents\skills\implementation-review\SKILL.md"
 ```
 
 Verify the repository baseline:
@@ -191,6 +205,8 @@ metadata.
 
 ```bash
 rm ~/.agents/skills/delivery-flow
+rm ~/.agents/skills/using-delivery-flow
+rm ~/.agents/skills/implementation-review
 rm -rf ~/.codex/delivery-flow
 ```
 
@@ -199,18 +215,22 @@ rm -rf ~/.codex/delivery-flow
 ### Skill not showing up
 
 1. Verify the symlink: `ls -la ~/.agents/skills/delivery-flow`
-2. Check the skill entries exist: `test -f ~/.agents/skills/delivery-flow/delivery-flow/SKILL.md`
-3. Check the routing skill exists: `test -f ~/.agents/skills/delivery-flow/using-delivery-flow/SKILL.md`
-4. Check the review skill exists: `test -f ~/.agents/skills/delivery-flow/implementation-review/SKILL.md`
-5. Restart Codex. Skill discovery happens at session start.
+2. Check the skill entries exist: `test -f ~/.agents/skills/delivery-flow/SKILL.md`
+3. Check the routing skill exists: `test -f ~/.agents/skills/using-delivery-flow/SKILL.md`
+4. Check the review skill exists: `test -f ~/.agents/skills/implementation-review/SKILL.md`
+5. Remove any old nested install link where `~/.agents/skills/delivery-flow` points at the repository `skills/` directory, then recreate the three direct skill links.
+6. Run `codex debug prompt-input "list delivery-flow skills"` and verify the three namespaced entries are present.
+7. Restart Codex. Skill discovery happens at session start.
 
 On Windows PowerShell:
 
 1. Check the install entry: `Get-Item "$env:USERPROFILE\.agents\skills\delivery-flow"`
-2. Check the execution skill: `Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\delivery-flow\SKILL.md"`
-3. Check the routing skill: `Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\using-delivery-flow\SKILL.md"`
-4. Check the review skill: `Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\implementation-review\SKILL.md"`
-5. Restart Codex.
+2. Check the execution skill: `Test-Path "$env:USERPROFILE\.agents\skills\delivery-flow\SKILL.md"`
+3. Check the routing skill: `Test-Path "$env:USERPROFILE\.agents\skills\using-delivery-flow\SKILL.md"`
+4. Check the review skill: `Test-Path "$env:USERPROFILE\.agents\skills\implementation-review\SKILL.md"`
+5. Remove any old nested install junction where `delivery-flow` points at the repository `skills` directory, then recreate the three direct skill junctions.
+6. Run `codex debug prompt-input "list delivery-flow skills"` and verify the three namespaced entries are present.
+7. Restart Codex.
 
 ### Tests do not run
 
