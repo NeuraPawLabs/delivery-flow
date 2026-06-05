@@ -26,7 +26,7 @@ from delivery_flow.runtime import (
     RuntimeResult as RuntimePackageResult,
     StopReason,
 )
-from delivery_flow.contracts import PlanArtifact, PlanTaskArtifact
+from delivery_flow.contracts import PlanArtifact, PlanTaskArtifact, TestDesignArtifact
 
 
 def test_top_level_package_exports_stable_public_contracts() -> None:
@@ -99,10 +99,12 @@ def test_contracts_package_exports_task_loop_contract_symbols() -> None:
         "ReviewArtifact",
         "RuntimeResult",
         "TaskExecutionContext",
+        "TestDesignArtifact",
     ]
     assert hasattr(contracts_module, "PlanTaskArtifact")
     assert hasattr(contracts_module, "PlanArtifact")
     assert hasattr(contracts_module, "TaskExecutionContext")
+    assert hasattr(contracts_module, "TestDesignArtifact")
     assert hasattr(contracts_module, "FinalizationArtifact")
 
 
@@ -112,6 +114,13 @@ class FakeProvider:
 
     def plan(self, payload):
         return {"plan_artifact": payload}
+
+    def design_tests(self, payload):
+        return TestDesignArtifact(
+            summary="public API test design",
+            required_test_scenarios=["public API pass"],
+            required_verification_commands=["uv run pytest"],
+        )
 
     def run_dev(self, payload):
         return {
@@ -175,6 +184,7 @@ def test_resume_delivery_flow_exercises_runtime_backed_resume_path() -> None:
                     "discussing_requirement",
                     "writing_spec",
                     "planning",
+                    "test_designing",
                     "running_dev",
                     "running_review",
                     "waiting_for_owner",
@@ -183,6 +193,11 @@ def test_resume_delivery_flow_exercises_runtime_backed_resume_path() -> None:
                 resume_context=ResumeContextArtifact(
                     plan=plan,
                     task_index=0,
+                    test_design=TestDesignArtifact(
+                        summary="resume test design",
+                        required_test_scenarios=["resume public API"],
+                        required_verification_commands=["uv run pytest"],
+                    ),
                     latest_delivery=DeliveryArtifact(delivery_summary="implemented"),
                     latest_review=ReviewArtifact(
                         raw_result="owner_input_required",
@@ -216,6 +231,7 @@ def test_resume_delivery_flow_keeps_previous_mode_when_capabilities_change() -> 
                     "discussing_requirement",
                     "writing_spec",
                     "planning",
+                    "test_designing",
                     "running_dev",
                     "running_review",
                     "waiting_for_owner",
@@ -233,6 +249,11 @@ def test_resume_delivery_flow_keeps_previous_mode_when_capabilities_change() -> 
                         ],
                     },
                     "task_index": 0,
+                    "test_design": {
+                        "summary": "resume test design",
+                        "required_test_scenarios": ["resume public API"],
+                        "required_verification_commands": ["uv run pytest"],
+                    },
                     "latest_delivery": {"delivery_summary": "implemented"},
                     "latest_review": {
                         "raw_result": "owner_input_required",
@@ -272,6 +293,11 @@ def test_resume_delivery_flow_rejects_unknown_previous_mode() -> None:
                             ],
                         },
                         "task_index": 0,
+                        "test_design": {
+                            "summary": "resume test design",
+                            "required_test_scenarios": ["resume public API"],
+                            "required_verification_commands": ["uv run pytest"],
+                        },
                         "latest_delivery": {"delivery_summary": "implemented"},
                         "latest_review": {
                             "raw_result": "owner_input_required",

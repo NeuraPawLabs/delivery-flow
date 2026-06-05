@@ -2,7 +2,7 @@
 
 `delivery-flow` 是一个紧凑的跨平台共享 agent skill 入口与控制器约定，
 用来把单条任务计划持续推进过
-`spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`，而不是每一轮都重新断回 owner 手里。
+`spec -> plan -> test-design -> task-by-task dev/review/fix -> finalize -> wait`，而不是每一轮都重新断回 owner 手里。
 
 [English README](./README.md) | [架构说明](./docs/architecture.zh-CN.md) | [Codex 指南](./docs/platforms/codex.zh-CN.md) | [Claude/Cursor 指南](./docs/platforms/claude.zh-CN.md) | [OpenCode 指南](./docs/platforms/opencode.zh-CN.md)
 
@@ -35,6 +35,8 @@ bootstrap-capable。
 
 - 显式 mode 选择：`superpowers-backed` / `fallback`
 - 显式 `execution_strategy` 工作流状态：`subagent-driven`、`inline`、`unresolved`
+- `test-design` 会在 `plan` 之后、`dev` 之前先生成必需测试矩阵
+- 除非 owner 显式跳过，否则 no test-design, no dev
 - plan 之后由主 agent 持续推进执行，直到进入终止态
 - execution-strategy 优先级固定为：`owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
 - 在 `superpowers-backed` 下，`subagent-driven` 会用 subagents 执行 plan 之后的 `dev/review/fix`，显式 `inline` 也仍然合法并在当前会话内执行；`fallback` 则原生保持同一套 owner-facing loop
@@ -207,7 +209,8 @@ uv run pytest
 - 共享 skill surface 可以在已支持的平台上安装；其中 Codex 走
   discovery-only 接线，Claude Code、Cursor、OpenCode 还会补充
   bootstrap-capable 的启动路由能力
-- controller runtime 已经能执行 `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
+- controller runtime 已经能执行 `spec -> plan -> test-design -> task-by-task dev/review/fix -> finalize -> wait`
+- runtime 会在 `plan` 和 `dev` 之间调用 `design_tests`，并把 test design 贯穿到 task context
 - plan 之后会显式维护 `execution_strategy`：`subagent-driven`、`inline`、`unresolved`
 - execution-strategy 优先级固定为：`owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
 - plan 之后由主 agent 持续推进执行，直到进入终止态

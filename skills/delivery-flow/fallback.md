@@ -8,9 +8,10 @@ Fallback exists to preserve the same owner-facing workflow contract with a weake
 
 - `discuss_and_spec` is performed natively
 - `plan` is performed natively
+- `design_tests` is performed natively after `plan` and before dev
 - after planning, the main agent keeps execution moving continuously until a terminal stop
 - execution strategy remains controller-owned workflow state after planning
-- `dev`, `review`, and `fix` still exist after planning and are executed natively
+- `test-design`, `dev`, `review`, and `fix` still exist after planning and are executed natively
 - non-terminal `review` never stops at a task boundary: it either advances to the next task or enters `fix`
 - `fix` is non-terminal and must always be followed by `review`
 - `finalize` still runs only after all planned tasks reach strict `pass`
@@ -29,6 +30,7 @@ Fallback may differ internally, but it must preserve:
 
 - explicit mode reporting
 - task-by-task post-plan execution
+- no implementation before dev has a test-design artifact
 - continuous controller-owned execution after planning
 - normalized review results
 - strict pass requirements

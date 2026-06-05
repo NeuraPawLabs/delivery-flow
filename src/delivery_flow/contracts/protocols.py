@@ -9,6 +9,7 @@ from delivery_flow.contracts.models import (
     RequirementArtifact,
     ReviewArtifact,
     TaskExecutionContext,
+    TestDesignArtifact,
 )
 
 
@@ -20,6 +21,7 @@ class CapabilityDetector(Protocol):
 class ExecutionBackend(Protocol):
     def discuss_and_spec(self, payload: RequirementArtifact | dict[str, object]) -> object: ...
     def plan(self, payload: object) -> PlanArtifact | dict[str, object]: ...
+    def design_tests(self, payload: object) -> TestDesignArtifact | dict[str, object]: ...
     def run_dev(
         self,
         payload: PlanArtifact | TaskExecutionContext | dict[str, object],

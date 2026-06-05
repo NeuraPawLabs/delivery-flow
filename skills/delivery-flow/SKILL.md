@@ -12,6 +12,7 @@ Use this skill when one main agent should keep work moving through:
 
 - `spec`
 - `plan`
+- `test-design`
 - task-by-task `dev -> review -> fix -> review ...`
 - `finalize`
 - `wait`
@@ -94,7 +95,11 @@ Do not use it for:
   - `execution_strategy=subagent-driven`
   - `execution_strategy=inline`
   - `execution_strategy=unresolved`
-- after ownership is taken, execution stays task-by-task `dev -> review -> fix -> review ...` until strict `pass`
+- after ownership is taken, execution follows `spec -> plan -> test-design -> task-by-task dev/review/fix -> finalize -> wait`
+- test-design builds the test matrix and required verification before implementation starts
+- no test-design, no dev, unless the owner explicitly overrides that gate
+- runtime adapters expose `design_tests` between `plan` and the first `dev`
+- after test-design, execution stays task-by-task `dev -> review -> fix -> review ...` until strict `pass`
 - after planning, the main agent keeps execution moving task by task until a terminal stop
 - post-plan execution is task-by-task
 - implementation-review handoffs start a fix run, but do not grant permission to start code changes before execution strategy is confirmed
@@ -137,8 +142,10 @@ Override rule:
 
 ## Implementation-Review Handoff
 
-When the owner provides `implementation-review` findings with a prompt such as
-`Use neurapaw-delivery:delivery-flow to start a fix run from the implementation-review findings:`,
+When the owner provides `implementation-review` findings with either a prompt such as
+`Use neurapaw-delivery:delivery-flow to start a fix run from the implementation-review findings:`
+or a short owner selection from a previous review result containing
+`pending_followup=implementation-review` and `option_1=delivery-flow-fix`,
 `delivery-flow` must treat it as a request to start a fix run, not as direct permission to edit code.
 First prove activation as described in `Activation Proof`.
 

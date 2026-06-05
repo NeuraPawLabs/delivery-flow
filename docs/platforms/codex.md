@@ -101,6 +101,7 @@ modes:
 - `fallback`
 - post-plan execution strategy is explicit workflow state: `subagent-driven`, `inline`, or `unresolved`
 - execution-strategy priority is `owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
+- `test-design` runs after `plan` and before `dev`; no test-design, no dev, unless the owner explicitly overrides that gate
 - after `plan`, the main agent keeps execution moving until a terminal stop
 - in `superpowers-backed`, `subagent-driven` runs post-plan `dev/review/fix` via subagents and explicit `inline` keeps them in the current session
 - after an `implementation-review` blocker handoff starts a fix run, unresolved execution strategy must be selected before code changes start
@@ -186,7 +187,8 @@ Once installed, `delivery-flow` defaults into one runtime-backed controller loop
 - explicit `superpowers-backed` / `fallback` mode selection
 - explicit execution strategy state for post-plan execution: `subagent-driven`, `inline`, or `unresolved`
 - execution-strategy priority is `owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
-- runtime-owned `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
+- runtime-owned `spec -> plan -> test-design -> task-by-task dev/review/fix -> finalize -> wait`
+- `design_tests` builds the test matrix before the first `dev` task starts
 - continuous main-agent execution after planning until a terminal stop
 - in `superpowers-backed`, `subagent-driven` dispatches subagents for post-plan `dev/review/fix` and explicit `inline` keeps them in the current session
 - if execution strategy is unresolved, the main agent may ask once after planning

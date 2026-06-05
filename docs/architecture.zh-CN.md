@@ -58,7 +58,8 @@ flowchart TD
 
     S --> T["adapter.discuss_and_spec()"]
     T --> U["adapter.plan()"]
-    U --> V["_execute_plan_from_task()"]
+    U --> TD["adapter.design_tests()"]
+    TD --> V["_execute_plan_from_task()"]
 
     V --> W["adapter.run_dev()"]
     W --> X["adapter.run_review()"]
@@ -127,7 +128,8 @@ flowchart TD
 状态机：
 
 - `select_mode()` 锁定执行 mode
-- `run()` 启动 `discuss -> spec -> plan -> execute` 生命周期
+- `run()` 启动 `discuss -> spec -> plan -> test-design -> execute` 生命周期
+- `_design_tests()` 会在任何 dev task 开始前生成必需测试矩阵
 - `_execute_plan_from_task()` 按 task 逐个推进
 - `_handle_review()` 统一 review 结果，并决定 pass、fix、stop 或等待 owner
 - `_finalize_current_run()` 只有在所有 task 都通过后才收尾

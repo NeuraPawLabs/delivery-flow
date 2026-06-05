@@ -12,10 +12,19 @@ from delivery_flow.contracts import (
     ReviewArtifact,
     RuntimeResult,
     TaskExecutionContext,
+    TestDesignArtifact,
 )
 from delivery_flow.contracts.models import ExecutionMetadata
 from delivery_flow.runtime.engine import DeliveryFlowRuntime
 from delivery_flow.runtime.models import ControllerState, StopReason
+
+
+def _test_design() -> TestDesignArtifact:
+    return TestDesignArtifact(
+        summary="resume test design",
+        required_test_scenarios=["resume path"],
+        required_verification_commands=["uv run pytest"],
+    )
 
 
 class StubAdapter:
@@ -35,7 +44,19 @@ class StubAdapter:
             ],
         )
 
+    def design_tests(self, payload):
+        return TestDesignArtifact(
+            summary="runtime test design",
+            required_test_scenarios=[
+                "happy path",
+                "review blocker recovery",
+                "finalization",
+            ],
+            required_verification_commands=["uv run pytest"],
+        )
+
     def run_dev(self, payload):
+        assert payload.test_design is not None
         return {"delivery_summary": "implemented", "verification_evidence": ["pytest"], "residual_risk": []}
 
     def run_review(self, payload):
@@ -87,7 +108,16 @@ class TypedArtifactAdapter:
             ],
         )
 
+    def design_tests(self, payload):
+        assert payload["plan"].summary == "typed runtime"
+        return TestDesignArtifact(
+            summary="typed runtime test matrix",
+            required_test_scenarios=["typed pass path"],
+            required_verification_commands=["uv run pytest"],
+        )
+
     def run_dev(self, payload):
+        assert payload.test_design.summary == "typed runtime test matrix"
         return DeliveryArtifact(
             delivery_summary="implemented typed path",
             verification_evidence=["uv run pytest"],
@@ -107,6 +137,18 @@ class TypedArtifactAdapter:
 class MetadataTracingAdapter(StubAdapter):
     def __init__(self) -> None:
         self.review_calls = 0
+
+    def design_tests(self, payload):
+        return {
+            "summary": "metadata tracing test design",
+            "required_test_scenarios": ["metadata tracing"],
+            "required_verification_commands": ["uv run pytest"],
+            "execution_metadata": {
+                "stage": "test_designing",
+                "backend": "superpowers-backed",
+                "executor_kind": "subagent",
+            },
+        }
 
     def run_dev(self, payload):
         return {
@@ -284,6 +326,38 @@ def test_runtime_pass_path_transitions_into_waiting_for_owner() -> None:
 
     assert result.mode == "superpowers-backed"
     assert result.final_state is ControllerState.WAITING_FOR_OWNER
+    assert "test_designing" in result.stage_sequence
+
+
+def test_runtime_runs_test_design_between_plan_and_dev() -> None:
+    adapter = StubAdapter()
+    runtime = DeliveryFlowRuntime(
+        adapter=adapter,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    result = runtime.run({"ticket": 86, "goal": "stage-2 runtime"})
+
+    assert result.stage_sequence[:5] == [
+        "discussing_requirement",
+        "writing_spec",
+        "planning",
+        "test_designing",
+        "running_dev",
+    ]
+
+
+def test_runtime_rejects_dev_without_test_design_hook() -> None:
+    class MissingTestDesignAdapter(StubAdapter):
+        design_tests = None
+
+    runtime = DeliveryFlowRuntime(
+        adapter=MissingTestDesignAdapter(),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    with pytest.raises(RuntimeError, match="design_tests"):
+        runtime.run({"ticket": 87, "goal": "missing test design"})
 
 
 def test_runtime_resume_defaults_to_review_stage_and_threads_owner_response() -> None:
@@ -306,6 +380,7 @@ def test_runtime_resume_defaults_to_review_stage_and_threads_owner_response() ->
                     "discussing_requirement",
                     "writing_spec",
                     "planning",
+                    "test_designing",
                     "running_dev",
                     "running_review",
                     "waiting_for_owner",
@@ -315,6 +390,7 @@ def test_runtime_resume_defaults_to_review_stage_and_threads_owner_response() ->
                 resume_context=ResumeContextArtifact(
                     plan=plan,
                     task_index=0,
+                    test_design=_test_design(),
                     latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
                     latest_review=ReviewArtifact(
                         raw_result="owner_input_required",
@@ -335,6 +411,7 @@ def test_runtime_resume_defaults_to_review_stage_and_threads_owner_response() ->
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "waiting_for_owner",
@@ -349,6 +426,100 @@ def test_runtime_resume_defaults_to_review_stage_and_threads_owner_response() ->
             "target_stage": "running_review",
             "owner_response": "roll out to canary first",
         }
+    ]
+
+
+def test_runtime_resume_rejects_missing_test_design_context() -> None:
+    plan = PlanArtifact(
+        summary="resume runtime",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+    runtime = DeliveryFlowRuntime(
+        adapter=ResumeAdapter(review_results=[{"raw_result": "approved"}]),
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    request = ResumeRequestArtifact(
+        previous_result=RuntimeResult(
+            mode="superpowers-backed",
+            final_state=ControllerState.WAITING_FOR_OWNER,
+            stage_sequence=[
+                "discussing_requirement",
+                "writing_spec",
+                "planning",
+                "test_designing",
+                "running_dev",
+                "running_review",
+                "waiting_for_owner",
+            ],
+            stop_reason=StopReason.NEEDS_OWNER_DECISION,
+            pending_task_id="task-1",
+            resume_context=ResumeContextArtifact(
+                plan=plan,
+                task_index=0,
+                latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
+                latest_review=ReviewArtifact(
+                    raw_result="owner_input_required",
+                    findings=["choose rollout order"],
+                    owner_decision_reason="choose rollout order",
+                ),
+            ),
+        ),
+        owner_response="roll out to canary first",
+    )
+
+    with pytest.raises(ValueError, match="test_design"):
+        runtime.resume(request)
+
+
+def test_runtime_resume_after_unresolved_strategy_records_initial_task_start() -> None:
+    plan = PlanArtifact(
+        summary="resume runtime",
+        tasks=[PlanTaskArtifact(task_id="task-1", title="Runtime", goal="Resume runtime")],
+    )
+    adapter = ResumeAdapter(review_results=[{"raw_result": "approved"}])
+    runtime = DeliveryFlowRuntime(
+        adapter=adapter,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    result = runtime.resume(
+        ResumeRequestArtifact(
+            previous_result=RuntimeResult(
+                mode="superpowers-backed",
+                execution_strategy="unresolved",
+                final_state=ControllerState.WAITING_FOR_OWNER,
+                stage_sequence=[
+                    "discussing_requirement",
+                    "writing_spec",
+                    "planning",
+                    "waiting_for_owner",
+                ],
+                stop_reason=StopReason.NEEDS_OWNER_DECISION,
+                pending_task_id="task-1",
+                open_issue_summaries=["choose execution strategy"],
+                resume_context=ResumeContextArtifact(
+                    plan=plan,
+                    task_index=0,
+                ),
+            ),
+            owner_response="use inline execution",
+            execution_strategy="inline",
+        )
+    )
+
+    assert result.stop_reason is StopReason.PASS
+    assert runtime.trace is not None
+    assert runtime.trace.resume_events == [
+        {
+            "task_id": "task-1",
+            "target_stage": "test_designing",
+            "owner_response": "use inline execution",
+        }
+    ]
+    assert runtime.trace.task_events == [
+        {"task_id": "task-1", "event": "started"},
+        {"task_id": "task-1", "event": "completed"},
     ]
 
 
@@ -372,6 +543,7 @@ def test_runtime_resume_preserves_previous_mode_despite_current_capabilities() -
                     "discussing_requirement",
                     "writing_spec",
                     "planning",
+                    "test_designing",
                     "running_dev",
                     "running_review",
                     "waiting_for_owner",
@@ -381,6 +553,7 @@ def test_runtime_resume_preserves_previous_mode_despite_current_capabilities() -
                 resume_context=ResumeContextArtifact(
                     plan=plan,
                     task_index=0,
+                    test_design=_test_design(),
                     latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
                     latest_review=ReviewArtifact(
                         raw_result="owner_input_required",
@@ -419,6 +592,7 @@ def test_runtime_resume_can_restart_current_task_from_dev() -> None:
                     "discussing_requirement",
                     "writing_spec",
                     "planning",
+                    "test_designing",
                     "running_dev",
                     "running_review",
                     "waiting_for_owner",
@@ -428,6 +602,7 @@ def test_runtime_resume_can_restart_current_task_from_dev() -> None:
                 resume_context=ResumeContextArtifact(
                     plan=plan,
                     task_index=0,
+                    test_design=_test_design(),
                     latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
                     latest_review=ReviewArtifact(
                         raw_result="owner_input_required",
@@ -448,6 +623,7 @@ def test_runtime_resume_can_restart_current_task_from_dev() -> None:
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "waiting_for_owner",
@@ -499,6 +675,7 @@ def test_runtime_resume_accepts_same_blocker_stop_reason() -> None:
                 resume_context=ResumeContextArtifact(
                     plan=plan,
                     task_index=0,
+                    test_design=_test_design(),
                     latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
                     latest_review=ReviewArtifact(
                         raw_result="changes_requested",
@@ -538,6 +715,7 @@ def test_runtime_resume_accepts_verification_unavailable_stop_reason() -> None:
                 resume_context=ResumeContextArtifact(
                     plan=plan,
                     task_index=0,
+                    test_design=_test_design(),
                     latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
                     latest_review=ReviewArtifact(
                         raw_result="changes_requested",
@@ -576,6 +754,7 @@ def test_runtime_resume_restores_stage_events_for_seeded_sequence() -> None:
                     "discussing_requirement",
                     "writing_spec",
                     "planning",
+                    "test_designing",
                     "running_dev",
                     "running_review",
                     "waiting_for_owner",
@@ -584,6 +763,7 @@ def test_runtime_resume_restores_stage_events_for_seeded_sequence() -> None:
                 resume_context=ResumeContextArtifact(
                     plan=plan,
                     task_index=0,
+                    test_design=_test_design(),
                     latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
                     latest_review=ReviewArtifact(
                         raw_result="owner_input_required",
@@ -601,9 +781,9 @@ def test_runtime_resume_restores_stage_events_for_seeded_sequence() -> None:
         {"stage": "discussing_requirement", "event": "enter"},
         {"stage": "writing_spec", "event": "enter"},
         {"stage": "planning", "event": "enter"},
+        {"stage": "test_designing", "event": "enter"},
         {"stage": "running_dev", "event": "enter"},
         {"stage": "running_review", "event": "enter"},
-        {"stage": "waiting_for_owner", "event": "enter"},
     ]
 
 
@@ -688,6 +868,7 @@ def test_runtime_resets_lifecycle_for_each_run() -> None:
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "running_finalize",
@@ -777,6 +958,7 @@ def test_blocker_path_enters_fix_and_then_passes() -> None:
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "running_fix",
@@ -892,6 +1074,11 @@ def test_runtime_run_records_execution_metadata_into_trace_when_present() -> Non
     assert runtime.trace is not None
     assert runtime.trace.execution_events == [
         ExecutionMetadata(
+            stage="test_designing",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
+        ExecutionMetadata(
             stage="running_dev",
             backend="superpowers-backed",
             executor_kind="subagent",
@@ -924,7 +1111,7 @@ def test_runtime_run_surfaces_orchestration_evidence_in_final_summary_when_prese
 
     assert (
         "orchestration: backend=superpowers-backed executor_kind=subagent "
-        "stages=running_dev,running_review,running_fix"
+        "stages=test_designing,running_dev,running_review,running_fix"
     ) in result.final_summary
     assert "running_finalize" not in result.final_summary
 
@@ -962,6 +1149,11 @@ def test_runtime_run_ignores_finalize_execution_metadata_when_provider_supplies_
 
     assert runtime.trace is not None
     assert runtime.trace.execution_events == [
+        ExecutionMetadata(
+            stage="test_designing",
+            backend="superpowers-backed",
+            executor_kind="subagent",
+        ),
         ExecutionMetadata(
             stage="running_dev",
             backend="superpowers-backed",

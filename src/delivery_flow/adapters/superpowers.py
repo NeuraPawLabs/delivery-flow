@@ -7,6 +7,7 @@ from delivery_flow.contracts import (
     RequirementArtifact,
     ReviewArtifact,
     TaskExecutionContext,
+    TestDesignArtifact,
 )
 from delivery_flow.contracts.protocols import ExecutionBackend
 from delivery_flow.drivers.superpowers import SuperpowersBackedDriver
@@ -22,6 +23,9 @@ class SuperpowersAdapter:
 
     def plan(self, payload: object) -> PlanArtifact | dict[str, object]:
         return self.provider.plan(payload)
+
+    def design_tests(self, payload: object) -> TestDesignArtifact | dict[str, object]:
+        return self.driver.design_tests(payload)
 
     def run_dev(
         self,

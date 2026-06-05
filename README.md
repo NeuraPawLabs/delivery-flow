@@ -2,7 +2,7 @@
 
 `delivery-flow` is a compact shared agent skill surface and controller contract
 for keeping one task plan moving through
-`spec -> plan -> task-by-task dev/review/fix -> finalize -> wait` without
+`spec -> plan -> test-design -> task-by-task dev/review/fix -> finalize -> wait` without
 handing the loop back to the owner after each stage.
 
 [中文文档](./README.zh-CN.md) | [Architecture](./docs/architecture.md) | [Codex Guide](./docs/platforms/codex.md) | [Claude/Cursor Guide](./docs/platforms/claude.md) | [OpenCode Guide](./docs/platforms/opencode.md)
@@ -34,6 +34,8 @@ Codex versus Claude/Cursor/OpenCode capability split.
 
 - explicit mode selection: `superpowers-backed` or `fallback`
 - explicit `execution_strategy` workflow state: `subagent-driven`, `inline`, or `unresolved`
+- `test-design` runs after `plan` and before `dev` to build the required test matrix
+- no test-design, no dev, unless the owner explicitly overrides that gate
 - after planning, the main agent keeps execution moving until a terminal stop
 - execution-strategy priority is `owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
 - in `superpowers-backed`, `subagent-driven` uses subagents and explicit `inline` stays valid in the current session; `fallback` preserves the same owner-facing loop natively
@@ -208,7 +210,8 @@ This repository centers on one runtime-backed owner-facing workflow loop:
 - the shared skill surface can be installed across supported platforms; Codex
   uses discovery-only wiring while Claude Code, Cursor, and OpenCode add
   bootstrap-capable startup routing
-- the controller runtime executes `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
+- the controller runtime executes `spec -> plan -> test-design -> task-by-task dev/review/fix -> finalize -> wait`
+- the runtime calls `design_tests` between `plan` and `dev`, and carries that test design through task contexts
 - post-plan execution keeps explicit `execution_strategy`: `subagent-driven`, `inline`, or `unresolved`
 - execution-strategy priority is `owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
 - after planning, the main agent keeps execution moving until a terminal stop

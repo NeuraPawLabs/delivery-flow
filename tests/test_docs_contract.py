@@ -36,7 +36,9 @@ def test_skill_doc_keeps_core_task_loop_contract() -> None:
     skill_doc = _read("skills/delivery-flow/SKILL.md")
 
     _assert_mentions(skill_doc, "name: delivery-flow")
-    _assert_mentions(skill_doc, "dev", "review", "fix", "finalize", "wait")
+    _assert_mentions(skill_doc, "test-design", "dev", "review", "fix", "finalize", "wait")
+    _assert_mentions(skill_doc, "spec -> plan -> test-design")
+    _assert_mentions(skill_doc, "no test-design, no dev")
     _assert_mentions(skill_doc, "superpowers-backed", "fallback")
     _assert_mentions(skill_doc, "execution_strategy", "subagent-driven", "inline", "unresolved")
     _assert_mentions(skill_doc, "pass", "needs_owner_decision")
@@ -60,7 +62,8 @@ def test_backend_docs_keep_mode_and_review_smoke() -> None:
     superpowers_doc = _read("skills/delivery-flow/superpowers-backed.md")
     fallback_doc = _read("skills/delivery-flow/fallback.md")
 
-    _assert_mentions(superpowers_doc, "superpowers", "dev", "review", "fix", "subagents")
+    _assert_mentions(superpowers_doc, "superpowers", "test-design", "dev", "review", "fix", "subagents")
+    _assert_mentions(superpowers_doc, "design_tests", "before dev")
     _assert_mentions(superpowers_doc, "normalized", "pass", "blocker", "needs_owner_decision")
     _assert_mentions(
         superpowers_doc,
@@ -74,7 +77,8 @@ def test_backend_docs_keep_mode_and_review_smoke() -> None:
         "execution_strategy=inline",
         "current session",
     )
-    _assert_mentions(fallback_doc, "fallback", "dev", "review", "fix", "natively")
+    _assert_mentions(fallback_doc, "fallback", "test-design", "dev", "review", "fix", "natively")
+    _assert_mentions(fallback_doc, "design_tests", "before dev")
     _assert_mentions(
         fallback_doc,
         "strict pass requirements",
@@ -132,6 +136,9 @@ def test_codex_install_docs_cover_discovery_install_and_verification() -> None:
         "neurapaw-delivery:using-delivery-flow",
         "neurapaw-delivery:implementation-review",
         "blocker handoff",
+        "spec -> plan -> test-design",
+        "design_tests",
+        "no test-design, no dev",
         "unresolved execution strategy must be selected before code changes start",
         "delivery-flow` execution_strategy options",
         "delivery-flow` remains the top-level controller",
@@ -249,7 +256,8 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
     readme = _read("README.md")
     readme_zh = _read("README.zh-CN.md")
 
-    _assert_mentions(readme, "delivery-flow", "spec", "plan", "dev", "review", "fix")
+    _assert_mentions(readme, "delivery-flow", "spec", "plan", "test-design", "dev", "review", "fix")
+    _assert_mentions(readme, "spec -> plan -> test-design")
     _assert_mentions(readme, "superpowers-backed", "fallback", "subagents")
     _assert_mentions(readme, "execution_strategy", "subagent-driven", "inline", "unresolved")
     _assert_mentions(
@@ -316,7 +324,8 @@ def test_project_readmes_cover_current_machine_install_and_verification() -> Non
         tests_pass_marker="all repository tests pass",
     )
 
-    _assert_mentions(readme_zh, "delivery-flow", "spec", "plan", "dev", "review", "fix")
+    _assert_mentions(readme_zh, "delivery-flow", "spec", "plan", "test-design", "dev", "review", "fix")
+    _assert_mentions(readme_zh, "spec -> plan -> test-design")
     _assert_mentions(readme_zh, "superpowers-backed", "fallback", "subagents")
     _assert_mentions(readme_zh, "execution_strategy", "subagent-driven", "inline", "unresolved")
     _assert_mentions(

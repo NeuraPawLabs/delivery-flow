@@ -61,6 +61,24 @@ class PlanArtifact:
             raise ValueError("Plan artifacts require at least one task")
 
 
+@dataclass(frozen=True)
+class TestDesignArtifact:
+    __test__ = False
+
+    summary: str
+    required_test_scenarios: list[str] = field(default_factory=list)
+    required_verification_commands: list[str] = field(default_factory=list)
+    deferred_test_scenarios: list[str] = field(default_factory=list)
+    execution_metadata: ExecutionMetadata | None = None
+    schema_version: ClassVar[str] = CONTRACT_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        if not self.summary.strip():
+            raise ValueError("Test design artifacts require a non-empty summary")
+        if not self.required_test_scenarios:
+            raise ValueError("Test design artifacts require at least one required_test_scenario")
+
+
 @dataclass
 class DeliveryArtifact:
     delivery_summary: str
@@ -76,6 +94,7 @@ class TaskExecutionContext:
     task: PlanTaskArtifact
     task_index: int
     total_tasks: int
+    test_design: TestDesignArtifact | None = None
     latest_delivery: DeliveryArtifact | None = None
     latest_review: ReviewArtifact | None = None
     owner_response: str | None = None
@@ -136,6 +155,7 @@ class FinalizationArtifact:
 class ResumeContextArtifact:
     plan: PlanArtifact
     task_index: int
+    test_design: TestDesignArtifact | None = None
     latest_delivery: DeliveryArtifact | None = None
     latest_review: ReviewArtifact | None = None
 

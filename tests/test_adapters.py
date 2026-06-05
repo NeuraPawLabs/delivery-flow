@@ -9,6 +9,7 @@ from delivery_flow.contracts import (
     RequirementArtifact,
     ReviewArtifact,
     TaskExecutionContext,
+    TestDesignArtifact,
 )
 from delivery_flow.contracts.protocols import ExecutionBackend
 
@@ -22,6 +23,13 @@ class FakeProvider:
 
     def plan(self, payload):
         return {"plan_artifact": payload}
+
+    def design_tests(self, payload):
+        return {
+            "summary": "adapter test design",
+            "required_test_scenarios": ["adapter pass"],
+            "required_verification_commands": ["uv run pytest"],
+        }
 
     def run_dev(self, payload):
         return {
@@ -49,6 +57,7 @@ def test_superpowers_adapter_exposes_runtime_action_surface() -> None:
 
     assert callable(adapter.discuss_and_spec)
     assert callable(adapter.plan)
+    assert callable(adapter.design_tests)
     assert callable(adapter.run_dev)
     assert callable(adapter.run_review)
     assert callable(adapter.run_fix)
@@ -60,6 +69,7 @@ def test_fallback_adapter_exposes_runtime_action_surface() -> None:
 
     assert callable(adapter.discuss_and_spec)
     assert callable(adapter.plan)
+    assert callable(adapter.design_tests)
     assert callable(adapter.run_dev)
     assert callable(adapter.run_review)
     assert callable(adapter.run_fix)
@@ -73,6 +83,7 @@ def test_fallback_adapter_forwards_payloads_without_adding_semantics() -> None:
 
     assert adapter.discuss_and_spec(payload) == provider.discuss_and_spec(payload)
     assert adapter.plan(payload) == provider.plan(payload)
+    assert adapter.design_tests(payload) == provider.design_tests(payload)
     assert adapter.run_dev(payload) == provider.run_dev(payload)
     assert adapter.run_review(payload) == provider.run_review(payload)
     assert adapter.run_fix(payload) == provider.run_fix(payload)
@@ -86,6 +97,11 @@ def test_superpowers_adapter_adds_orchestration_metadata_while_fallback_stays_na
     superpowers = SuperpowersAdapter(provider=provider)
     fallback = FallbackAdapter(provider=provider)
 
+    assert superpowers.design_tests(payload)["execution_metadata"] == {
+        "backend": "superpowers-backed",
+        "executor_kind": "subagent",
+        "stage": "test_designing",
+    }
     assert superpowers.run_dev(payload)["execution_metadata"] == {
         "backend": "superpowers-backed",
         "executor_kind": "subagent",
@@ -104,6 +120,7 @@ def test_superpowers_adapter_adds_orchestration_metadata_while_fallback_stays_na
     assert "execution_metadata" not in superpowers.finalize(payload)
 
     assert "execution_metadata" not in fallback.run_dev(payload)
+    assert "execution_metadata" not in fallback.design_tests(payload)
     assert "execution_metadata" not in fallback.run_review(payload)
     assert "execution_metadata" not in fallback.run_fix(payload)
     assert "execution_metadata" not in fallback.finalize(payload)
@@ -113,6 +130,7 @@ def test_adapters_match_execution_backend_protocol_type_surface() -> None:
     protocol_hints = {
         "discuss_and_spec": get_type_hints(ExecutionBackend.discuss_and_spec),
         "plan": get_type_hints(ExecutionBackend.plan),
+        "design_tests": get_type_hints(ExecutionBackend.design_tests),
         "run_dev": get_type_hints(ExecutionBackend.run_dev),
         "run_review": get_type_hints(ExecutionBackend.run_review),
         "run_fix": get_type_hints(ExecutionBackend.run_fix),
@@ -127,6 +145,7 @@ def test_adapters_match_execution_backend_protocol_type_surface() -> None:
     for adapter_type in (SuperpowersAdapter, FallbackAdapter):
         discuss_hints = get_type_hints(adapter_type.discuss_and_spec)
         plan_hints = get_type_hints(adapter_type.plan)
+        test_design_hints = get_type_hints(adapter_type.design_tests)
         dev_hints = get_type_hints(adapter_type.run_dev)
         review_hints = get_type_hints(adapter_type.run_review)
         fix_hints = get_type_hints(adapter_type.run_fix)
@@ -135,6 +154,7 @@ def test_adapters_match_execution_backend_protocol_type_surface() -> None:
         assert set(get_args(discuss_hints["payload"])) == {RequirementArtifact, dict[str, object]}
         assert set(get_args(discuss_hints["return"])) == set(get_args(protocol_hints["discuss_and_spec"]["return"]))
         assert set(get_args(plan_hints["return"])) == {PlanArtifact, dict[str, object]}
+        assert set(get_args(test_design_hints["return"])) == {TestDesignArtifact, dict[str, object]}
         assert set(get_args(dev_hints["payload"])) == {PlanArtifact, TaskExecutionContext, dict[str, object]}
         assert set(get_args(dev_hints["return"])) == {DeliveryArtifact, dict[str, object]}
         assert set(get_args(review_hints["payload"])) == {DeliveryArtifact, TaskExecutionContext, dict[str, object]}

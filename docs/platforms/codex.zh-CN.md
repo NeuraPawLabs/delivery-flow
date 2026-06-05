@@ -95,6 +95,7 @@ Codex 可能会用来源 namespace 展示这些入口，例如
 - `fallback`
 - `plan` 之后的 execution strategy 也是显式 workflow state：`subagent-driven`、`inline`、`unresolved`
 - execution-strategy 优先级固定为：`owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
+- `test-design` 会在 `plan` 之后、`dev` 之前运行；除非 owner 显式跳过，否则 no test-design, no dev
 - `plan` 之后由主 agent 持续推进执行，直到进入终止态
 - 在 `superpowers-backed` 下，`subagent-driven` 会用 subagents 执行 plan 之后的 `dev/review/fix`，显式 `inline` 则保持在当前会话内执行
 - 当 `implementation-review` blocker handoff 启动 fix run 时，未确定的 execution strategy 必须先选择，才能开始改代码
@@ -179,7 +180,8 @@ uv run pytest
 - 显式选择 `superpowers-backed` / `fallback`
 - 显式维护 `plan` 之后的 execution strategy：`subagent-driven`、`inline`、`unresolved`
 - execution-strategy 优先级固定为：`owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
-- runtime 自己推进 `spec -> plan -> task-by-task dev/review/fix -> finalize -> wait`
+- runtime 自己推进 `spec -> plan -> test-design -> task-by-task dev/review/fix -> finalize -> wait`
+- `design_tests` 会在第一个 `dev` task 开始前生成测试矩阵
 - `plan` 之后由主 agent 持续推进执行，直到进入终止态
 - 在 `superpowers-backed` 下，`subagent-driven` 通过 subagents 调度 plan 之后的 `dev/review/fix`，显式 `inline` 则保持在当前会话内执行
 - 如果 execution strategy 还未确定，主 agent 可以在 `plan` 之后询问一次

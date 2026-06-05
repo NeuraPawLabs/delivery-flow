@@ -6,10 +6,11 @@ Use this mode when the required `superpowers` capabilities are available.
 
 - `discuss_and_spec` uses the `superpowers` requirement/spec flow
 - `plan` uses the planning flow already defined by `superpowers`
+- `design_tests` runs after `plan` and before dev to build the required test matrix
 - after planning, the main agent keeps execution moving continuously until a terminal stop
 - execution strategy remains controller-owned workflow state after planning
-- if `execution_strategy=subagent-driven`, post-plan `dev`, `review`, and `fix` are executed via subagents
-- if `execution_strategy=inline`, the main agent executes post-plan `dev`, `review`, and `fix` in the current session while preserving the same controller-owned loop
+- if `execution_strategy=subagent-driven`, post-plan `test-design`, `dev`, `review`, and `fix` are executed via subagents
+- if `execution_strategy=inline`, the main agent executes post-plan `test-design`, `dev`, `review`, and `fix` in the current session while preserving the same controller-owned loop
 - non-terminal `review` never stops at a task boundary: it either advances to the next task or enters `fix`
 - `fix` is non-terminal and must always be followed by `review`
 - `finalize` runs once after all planned tasks reach strict `pass`
@@ -29,6 +30,7 @@ This mode may reuse `superpowers` skills and subagents, but it may not redefine:
 
 - explicit mode reporting
 - task-by-task post-plan execution
+- no implementation before dev has a test-design artifact
 - continuous controller-owned execution after planning
 - normalized review results
 - strict pass requirements

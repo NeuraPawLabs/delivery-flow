@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from delivery_flow.contracts import DeliveryArtifact, ReviewArtifact
+from delivery_flow.contracts import DeliveryArtifact, ReviewArtifact, TestDesignArtifact
 from delivery_flow.contracts.models import ExecutionMetadata
 
 
@@ -21,7 +21,7 @@ class SuperpowersBackedDriver:
     def _with_execution_metadata(self, result: object, *, stage: str) -> object:
         metadata = self._delegated_execution_metadata(stage=stage)
 
-        if isinstance(result, (DeliveryArtifact, ReviewArtifact)):
+        if isinstance(result, (DeliveryArtifact, ReviewArtifact, TestDesignArtifact)):
             if result.execution_metadata is not None:
                 return result
             return replace(result, execution_metadata=metadata)
@@ -45,6 +45,9 @@ class SuperpowersBackedDriver:
 
     def plan(self, payload: object) -> object:
         return self.provider.plan(payload)
+
+    def design_tests(self, payload: object) -> object:
+        return self._with_execution_metadata(self.provider.design_tests(payload), stage="test_designing")
 
     def run_dev(self, payload: object) -> object:
         return self._with_execution_metadata(self.provider.run_dev(payload), stage="running_dev")

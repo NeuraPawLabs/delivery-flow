@@ -32,6 +32,8 @@ Use these scenarios to check that the skill still shapes behavior correctly.
 
 - once the skill is active, expect the main agent to own workflow transitions after planning
 - expect the main agent to keep execution moving continuously until a terminal stop
+- expect `test-design` to run after `plan` and before the first `dev`
+- expect no test-design, no dev, unless the owner explicitly overrides that gate
 - expect post-plan execution to be task-by-task
 - expect review results to normalize to `pass / blocker / needs_owner_decision`
 - expect no backend-native review wording to become workflow state
@@ -50,7 +52,7 @@ Use these scenarios to check that the skill still shapes behavior correctly.
 ## Scenario 5: Superpowers-Backed Uses Subagents Post-Plan
 
 - run in `superpowers-backed`
-- expect post-plan `dev`, `review`, and `fix` to execute through subagents
+- expect post-plan `test-design`, `dev`, `review`, and `fix` to execute through subagents
 - expect the main agent to keep scheduling rather than yielding after each subagent result
 
 ## Scenario 6: Execution Strategy Unresolved Asks Once

@@ -19,6 +19,7 @@ from delivery_flow.contracts import (
     RequirementArtifact,
     ReviewArtifact,
     TaskExecutionContext,
+    TestDesignArtifact,
 )
 from delivery_flow.contracts.protocols import CapabilityDetector, ExecutionBackend
 
@@ -144,6 +145,7 @@ def test_controller_and_runtime_use_contract_protocols() -> None:
     fix_hints = get_type_hints(ExecutionBackend.run_fix)
     finalize_hints = get_type_hints(ExecutionBackend.finalize)
     discuss_hints = get_type_hints(ExecutionBackend.discuss_and_spec)
+    test_design_hints = get_type_hints(ExecutionBackend.design_tests)
 
     assert controller_hints["capability_detector"] is CapabilityDetector
     assert controller_hints["provider"] is ExecutionBackend
@@ -153,6 +155,10 @@ def test_controller_and_runtime_use_contract_protocols() -> None:
     assert set(get_args(engine_derive_hints["review_payload"])) == {ReviewArtifact, dict[str, str]}
     assert set(get_args(discuss_hints["payload"])) == {RequirementArtifact, dict[str, object]}
     assert set(get_args(plan_hints["return"])) == {PlanArtifact, dict[str, object]}
+    assert set(get_args(test_design_hints["return"])) == {
+        TestDesignArtifact,
+        dict[str, object],
+    }
     assert set(get_args(dev_hints["payload"])) == {PlanArtifact, TaskExecutionContext, dict[str, object]}
     assert set(get_args(dev_hints["return"])) == {DeliveryArtifact, dict[str, object]}
     assert set(get_args(protocol_hints["payload"])) == {DeliveryArtifact, TaskExecutionContext, dict[str, object]}

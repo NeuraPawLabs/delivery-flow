@@ -32,6 +32,7 @@ This is not for handling feedback from another reviewer. Use `receiving-code-rev
 - Record `Commands run` and `Commands not run` explicitly in the final review.
 - Treat unverified required behavior as residual risk or a blocker, depending on severity and available evidence.
 - Do not infer acceptance from green tests alone; tests must correspond to the requirements.
+- Do not fail fast after the first finding. Continue reviewing enough implementation, tests, docs, and contracts to identify other material blockers or required changes. Once the result is already `blocker`, low-value suggestions may be omitted.
 
 ## Review Dimensions
 
@@ -92,19 +93,27 @@ Language rule for human-facing review output:
 
 - Default to the user's current-turn language for human-facing review output.
 - Keep contract field names such as `Result`, `Findings`, `Residual Risk`, `Verification`, and `Next Action` in English when the output shape requires them.
-- Keep code identifiers, file paths, commands, error messages, API names, and handoff prompts in their original language.
+- Keep code identifiers, file paths, commands, error messages, and API names in their original language.
 - This language rule applies only to the human-facing review response, not internal classification, evidence gathering, or machine-readable contract markers.
 
 Set `Next Action` by result:
 
-- `pass`: say no follow-up `delivery-flow` run is needed.
-- `blocker`: include a ready-to-run handoff prompt that starts with `Use neurapaw-delivery:delivery-flow to start a fix run from the implementation-review findings:` and lists the findings, active plan, linked spec, affected files, and required verification. Add a `First action` block requiring the next agent to read `/home/apeming/.codex/neurapaw-delivery/skills/delivery-flow/SKILL.md` before loading subordinate skills, reply with `Loaded neurapaw-delivery:delivery-flow as top-level controller.`, and not use `superpowers:*` as the top-level process skill. Add: `Do not start code changes until delivery-flow has confirmed or selected execution_strategy.`
-- `needs_owner_decision`: ask the exact owner question needed before any fix run starts.
+- `pass`: say no follow-up fix is needed.
+- `blocker`: keep the owner-facing next step concise and present exactly this shape:
+  - `Choose the next step:`
+  - `1. Fix blockers - use delivery-flow fix run`
+  - `2. Explain findings - explain only, no code changes`
+  - `3. No follow-up action`
+  - Include `Routing:` lines with `pending_followup=implementation-review` and `option_1=delivery-flow-fix`.
+  - In Chinese output, localize the visible labels such as `修复 blockers`, `解释 findings`, and `暂不处理`, but keep the routing keys unchanged.
+  - Do not include skill activation prompts, do not include `First action`, and do not include delivery-flow internals.
+- `needs_owner_decision`: ask the exact owner question needed before any fix starts.
 
 ## Common Mistakes
 
 - Do not review only the diff if the behavior depends on surrounding code.
 - Do not treat architectural preference as a blocker without showing concrete risk.
 - Do not bury blockers after summaries.
+- Do not stop at the first blocker; gather other material blockers and required changes before reporting.
 - Do not omit tests from the review; missing tests can be the primary finding.
 - Do not ask the owner to decide issues that the codebase or spec already resolves.

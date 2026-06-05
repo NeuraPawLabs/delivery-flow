@@ -13,6 +13,7 @@ Use `using-delivery-flow` as the root routing skill for that decision at the roo
 - route into `delivery-flow` when the request belongs to an ongoing delivery thread
 - the thread already has a plan and the same work must continue
 - review feedback has arrived and the same thread must continue through fix/review continuation
+- short owner replies or selections such as `1`, `fix`, `repair`, or `修复` route into `delivery-flow` when the previous assistant message contains `pending_followup=implementation-review` and `option_1=delivery-flow-fix`; normalize the turn as `Fix the implementation-review blockers from the previous review.`
 - the current request is review-only, analysis-only, or comparison-only inside an active delivery thread
 - the owner is continuing an existing delivery thread on a new user turn
 - one main agent should keep ownership across phases until pass or owner input is required

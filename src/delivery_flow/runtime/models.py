@@ -8,6 +8,7 @@ class ControllerState(StrEnum):
     DISCUSSING_REQUIREMENT = "discussing_requirement"
     WRITING_SPEC = "writing_spec"
     PLANNING = "planning"
+    TEST_DESIGNING = "test_designing"
     RUNNING_DEV = "running_dev"
     RUNNING_REVIEW = "running_review"
     RUNNING_FIX = "running_fix"

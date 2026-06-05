@@ -58,7 +58,8 @@ flowchart TD
 
     S --> T["adapter.discuss_and_spec()"]
     T --> U["adapter.plan()"]
-    U --> V["_execute_plan_from_task()"]
+    U --> TD["adapter.design_tests()"]
+    TD --> V["_execute_plan_from_task()"]
 
     V --> W["adapter.run_dev()"]
     W --> X["adapter.run_review()"]
@@ -130,7 +131,8 @@ From there, `src/delivery_flow/runtime/engine.py` turns the contract into an
 explicit state machine:
 
 - `select_mode()` locks the execution mode
-- `run()` starts the `discuss -> spec -> plan -> execute` lifecycle
+- `run()` starts the `discuss -> spec -> plan -> test-design -> execute` lifecycle
+- `_design_tests()` builds the required test matrix before any dev task starts
 - `_execute_plan_from_task()` advances one task at a time
 - `_handle_review()` normalizes review outcomes and decides whether to pass,
   fix, stop, or wait for owner input

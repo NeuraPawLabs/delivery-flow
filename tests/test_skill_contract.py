@@ -15,6 +15,7 @@ from delivery_flow.contracts import (
     ReviewArtifact,
     RuntimeResult,
     TaskExecutionContext,
+    TestDesignArtifact,
 )
 from delivery_flow.runtime.models import ControllerState, StopReason
 
@@ -138,6 +139,13 @@ class ScriptedProvider:
             ],
         }
 
+    def design_tests(self, payload):
+        return TestDesignArtifact(
+            summary="delivery-flow contract test design",
+            required_test_scenarios=["task-1 pass", "task-2 pass"],
+            required_verification_commands=["uv run pytest"],
+        )
+
     def run_dev(self, payload):
         assert isinstance(payload, TaskExecutionContext)
         return {
@@ -205,6 +213,7 @@ def _resume_request(*, mode: str, restart_current_task_from_dev: bool = False) -
                 "discussing_requirement",
                 "writing_spec",
                 "planning",
+                "test_designing",
                 "running_dev",
                 "running_review",
                 "running_dev",
@@ -218,6 +227,11 @@ def _resume_request(*, mode: str, restart_current_task_from_dev: bool = False) -
             resume_context=ResumeContextArtifact(
                 plan=plan,
                 task_index=1,
+                test_design=TestDesignArtifact(
+                    summary="resume test design",
+                    required_test_scenarios=["resume task-2"],
+                    required_verification_commands=["uv run pytest"],
+                ),
                 latest_delivery=DeliveryArtifact(delivery_summary="implemented task-2"),
                 latest_review=ReviewArtifact(
                     raw_result="owner_input_required",
@@ -370,6 +384,10 @@ def test_implementation_review_is_a_general_project_review_skill() -> None:
     for marker in (
         "do not claim pass without evidence",
         "do not review against a spec directly until a plan links it to the current implementation",
+        "do not fail fast",
+        "material blockers",
+        "required changes",
+        "low-value suggestions",
         "needs_owner_decision",
         "spec unavailable",
         "commands run",
@@ -406,15 +424,28 @@ def test_implementation_review_is_a_general_project_review_skill() -> None:
         "verification:",
         "residual risk:",
         "next action:",
-        "use neurapaw-delivery:delivery-flow to start a fix run from the implementation-review findings",
-        "first action",
-        "/home/apeming/.codex/neurapaw-delivery/skills/delivery-flow/skill.md",
-        "loaded neurapaw-delivery:delivery-flow as top-level controller",
-        "before loading subordinate skills",
-        "not use `superpowers:*` as the top-level process skill",
-        "do not start code changes until delivery-flow has confirmed or selected execution_strategy",
+        "owner-facing",
+        "choose the next step",
+        "1. fix blockers",
+        "2. explain findings",
+        "3. no follow-up action",
+        "routing:",
+        "pending_followup=implementation-review",
+        "option_1=delivery-flow-fix",
+        "修复",
+        "do not include skill activation prompts",
+        "do not include `first action`",
+        "do not include delivery-flow internals",
     ):
         assert marker in _normalized(output_contract)
+
+    for removed_marker in (
+        "use neurapaw-delivery:delivery-flow to start a fix run from the implementation-review findings",
+        "/home/apeming/.codex/neurapaw-delivery/skills/delivery-flow/skill.md",
+        "loaded neurapaw-delivery:delivery-flow as top-level controller",
+        "not use `superpowers:*` as the top-level process skill",
+    ):
+        assert removed_marker not in _normalized(output_contract)
 
     for marker in (
         "human-facing review output",
@@ -440,6 +471,8 @@ def test_using_delivery_flow_is_a_root_routing_skill() -> None:
     assert _frontmatter_value(routing_doc, "name") == "using-delivery-flow"
     assert "starting a conversation" in description
     assert "continuing an ongoing delivery thread" in description
+    assert "short owner reply" in description
+    assert "implementation-review blockers" in description
     assert "delivery-flow" in description
     assert "single-phase" in description
     assert "before any response" in _normalized(root_rule)
@@ -449,6 +482,14 @@ def test_using_delivery_flow_is_a_root_routing_skill() -> None:
     assert "analysis-only" in _normalized(route_into)
     assert "comparison-only" in _normalized(route_into)
     assert "inside an active delivery thread" in _normalized(route_into)
+    assert "short owner replies" in _normalized(route_into)
+    assert "`1`" in _normalized(route_into)
+    assert "`fix`" in _normalized(route_into)
+    assert "`repair`" in _normalized(route_into)
+    assert "`修复`" in _normalized(route_into)
+    assert "pending_followup=implementation-review" in _normalized(route_into)
+    assert "option_1=delivery-flow-fix" in _normalized(route_into)
+    assert "fix the implementation-review blockers from the previous review" in _normalized(route_into)
     assert "single-phase work should yield" in _normalized(yield_to)
     assert "review-only" in _normalized(yield_to)
     assert "analysis-only" in _normalized(yield_to)
@@ -477,6 +518,14 @@ def test_using_delivery_flow_bootstrap_contract_file_keeps_shared_root_routing_r
     assert "analysis-only" in _normalized(route_into)
     assert "comparison-only" in _normalized(route_into)
     assert "inside an active delivery thread" in _normalized(route_into)
+    assert "short owner replies" in _normalized(route_into)
+    assert "`1`" in _normalized(route_into)
+    assert "`fix`" in _normalized(route_into)
+    assert "`repair`" in _normalized(route_into)
+    assert "`修复`" in _normalized(route_into)
+    assert "pending_followup=implementation-review" in _normalized(route_into)
+    assert "option_1=delivery-flow-fix" in _normalized(route_into)
+    assert "fix the implementation-review blockers from the previous review" in _normalized(route_into)
     assert "single-phase work should yield" in _normalized(yield_to)
     assert "review-only" in _normalized(yield_to)
     assert "analysis-only" in _normalized(yield_to)
@@ -535,6 +584,7 @@ def test_skill_doc_declares_selection_priority_and_neighbor_skill_markers() -> N
 
 def test_skill_doc_declares_routing_contract_via_sections_and_markers() -> None:
     skill_doc = _read("skills/delivery-flow/SKILL.md")
+    core_contract = _section_body(skill_doc, "Core Contract")
     routing_decision = _section_body(skill_doc, "Routing Decision")
     when_to_take_ownership = _section_body(skill_doc, "When To Take Ownership")
     when_to_yield = _section_body(skill_doc, "When To Yield")
@@ -564,6 +614,13 @@ def test_skill_doc_declares_routing_contract_via_sections_and_markers() -> None:
         when_to_yield
     )
     assert "task by task" in use_it_when
+    for marker in (
+        "spec -> plan -> test-design",
+        "no test-design, no dev",
+        "test-design builds the test matrix",
+        "design_tests",
+    ):
+        assert marker.lower() in _normalized(core_contract)
 
 
 def test_delivery_flow_declares_implementation_review_handoff_strategy_choice() -> None:
@@ -584,6 +641,9 @@ def test_delivery_flow_declares_implementation_review_handoff_strategy_choice() 
     for marker in (
         "implementation-review findings",
         "start a fix run",
+        "pending_followup=implementation-review",
+        "option_1=delivery-flow-fix",
+        "short owner selection",
         "first prove activation",
         "fix scope",
         "findings",
@@ -636,6 +696,7 @@ def test_pass_path_preserves_expected_owner_facing_contract_in_both_modes() -> N
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "running_dev",
@@ -692,6 +753,7 @@ def test_strict_pass_issues_force_fix_review_before_advancing_in_both_modes() ->
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "running_fix",
@@ -731,6 +793,7 @@ def test_owner_decision_path_preserves_expected_owner_facing_contract_in_both_mo
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "running_dev",
@@ -781,6 +844,7 @@ def test_resume_review_path_preserves_expected_owner_facing_contract_in_both_mod
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "running_dev",
@@ -840,6 +904,7 @@ def test_resume_dev_restart_preserves_expected_owner_facing_contract_in_both_mod
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "running_dev",

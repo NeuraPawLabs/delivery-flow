@@ -11,6 +11,7 @@ from delivery_flow.contracts import (
     ReviewArtifact,
     RuntimeResult,
     TaskExecutionContext,
+    TestDesignArtifact,
 )
 from delivery_flow.controller import resume_delivery_flow, run_delivery_flow
 from delivery_flow.runtime.models import ControllerState, StopReason
@@ -25,6 +26,13 @@ class FakeProvider:
 
     def plan(self, payload):
         return {"plan_artifact": payload}
+
+    def design_tests(self, payload):
+        return TestDesignArtifact(
+            summary="default path test design",
+            required_test_scenarios=["default path pass"],
+            required_verification_commands=["uv run pytest"],
+        )
 
     def run_dev(self, payload):
         return {
@@ -96,6 +104,7 @@ def test_default_use_path_does_not_require_owner_to_restitch_stages() -> None:
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "running_finalize",
@@ -136,6 +145,13 @@ class TaskLoopProvider:
             ],
         }
 
+    def design_tests(self, payload):
+        return TestDesignArtifact(
+            summary="task-loop default test design",
+            required_test_scenarios=["task-1 pass", "task-2 pass"],
+            required_verification_commands=["uv run pytest"],
+        )
+
     def run_dev(self, payload):
         assert isinstance(payload, TaskExecutionContext)
         return {
@@ -160,6 +176,37 @@ class TaskLoopProvider:
 
     def finalize(self, payload):
         return self.finalize_result or {"final_summary": payload}
+
+
+class DesignTestSpyTaskLoopProvider(TaskLoopProvider):
+    def __init__(
+        self,
+        review_results: list[dict[str, object]],
+        *,
+        finalize_result: dict[str, object] | None = None,
+    ) -> None:
+        super().__init__(review_results=review_results, finalize_result=finalize_result)
+        self.design_test_calls = 0
+        self.dev_test_design_summaries: list[str | None] = []
+        self.review_test_design_summaries: list[str | None] = []
+
+    def design_tests(self, payload):
+        self.design_test_calls += 1
+        return super().design_tests(payload)
+
+    def run_dev(self, payload):
+        assert isinstance(payload, TaskExecutionContext)
+        self.dev_test_design_summaries.append(
+            payload.test_design.summary if payload.test_design is not None else None
+        )
+        return super().run_dev(payload)
+
+    def run_review(self, payload):
+        assert isinstance(payload, TaskExecutionContext)
+        self.review_test_design_summaries.append(
+            payload.test_design.summary if payload.test_design is not None else None
+        )
+        return super().run_review(payload)
 
 
 class ResumeTaskLoopProvider(TaskLoopProvider):
@@ -211,6 +258,7 @@ def _resume_request(*, mode: str, restart_current_task_from_dev: bool = False) -
                 "discussing_requirement",
                 "writing_spec",
                 "planning",
+                "test_designing",
                 "running_dev",
                 "running_review",
                 "running_dev",
@@ -223,6 +271,11 @@ def _resume_request(*, mode: str, restart_current_task_from_dev: bool = False) -
             resume_context=ResumeContextArtifact(
                 plan=plan,
                 task_index=1,
+                test_design=TestDesignArtifact(
+                    summary="resume test design",
+                    required_test_scenarios=["resume task-2"],
+                    required_verification_commands=["uv run pytest"],
+                ),
                 latest_delivery=DeliveryArtifact(delivery_summary="implemented task-2"),
                 latest_review=ReviewArtifact(
                     raw_result="owner_input_required",
@@ -311,7 +364,7 @@ def test_run_delivery_flow_surfaces_superpowers_execution_evidence_without_chang
     assert superpowers_result.owner_acceptance_required is fallback_result.owner_acceptance_required is False
     assert (
         "orchestration: backend=superpowers-backed executor_kind=subagent "
-        "stages=running_dev,running_review"
+        "stages=test_designing,running_dev,running_review"
     ) in superpowers_result.final_summary
     assert "orchestration:" not in fallback_result.final_summary
     for summary_fragment in (
@@ -342,17 +395,18 @@ def test_run_delivery_flow_honors_explicit_inline_execution_strategy_in_superpow
     assert "execution_strategy=inline" in result.final_summary
     assert (
         "orchestration: backend=superpowers-backed executor_kind=inline "
-        "stages=running_dev,running_review"
+        "stages=test_designing,running_dev,running_review"
     ) in result.final_summary
 
 
 def test_run_delivery_flow_unresolved_execution_strategy_stops_after_planning() -> None:
+    provider = DesignTestSpyTaskLoopProvider(
+        review_results=[{"raw_result": "approved"}, {"raw_result": "approved"}],
+        finalize_result={"owner_acceptance_required": False},
+    )
     result = run_delivery_flow(
         payload={"ticket": 303, "goal": "pick execution strategy", "execution_strategy": "unresolved"},
-        provider=TaskLoopProvider(
-            review_results=[{"raw_result": "approved"}, {"raw_result": "approved"}],
-            finalize_result={"owner_acceptance_required": False},
-        ),
+        provider=provider,
         capability_detector=SimpleNamespace(has_superpowers=True),
     )
 
@@ -363,6 +417,64 @@ def test_run_delivery_flow_unresolved_execution_strategy_stops_after_planning() 
     assert result.completed_task_ids == []
     assert result.open_issue_summaries == ["choose execution strategy"]
     assert "execution_strategy=unresolved" in result.final_summary
+    assert "test_designing" not in result.stage_sequence
+    assert result.resume_context is not None
+    assert result.resume_context.test_design is None
+    assert provider.design_test_calls == 0
+
+
+def test_resume_delivery_flow_after_unresolved_strategy_designs_tests_before_dev() -> None:
+    initial_provider = DesignTestSpyTaskLoopProvider(
+        review_results=[{"raw_result": "approved"}, {"raw_result": "approved"}],
+        finalize_result={"owner_acceptance_required": False},
+    )
+    unresolved_result = run_delivery_flow(
+        payload={"ticket": 304, "goal": "choose execution strategy", "execution_strategy": "unresolved"},
+        provider=initial_provider,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+    resume_provider = DesignTestSpyTaskLoopProvider(
+        review_results=[{"raw_result": "approved"}, {"raw_result": "approved"}],
+        finalize_result={"owner_acceptance_required": False},
+    )
+
+    result = resume_delivery_flow(
+        request=ResumeRequestArtifact(
+            previous_result=unresolved_result,
+            owner_response="use inline execution",
+            execution_strategy="inline",
+        ),
+        provider=resume_provider,
+        capability_detector=SimpleNamespace(has_superpowers=True),
+    )
+
+    assert result.stop_reason is StopReason.PASS
+    assert result.execution_strategy == "inline"
+    assert result.completed_task_ids == ["task-1", "task-2"]
+    assert result.stage_sequence == [
+        "discussing_requirement",
+        "writing_spec",
+        "planning",
+        "waiting_for_owner",
+        "test_designing",
+        "running_dev",
+        "running_review",
+        "running_dev",
+        "running_review",
+        "running_finalize",
+        "waiting_for_owner",
+    ]
+    assert "resume: task=task-1 target=test_designing" in result.final_summary
+    assert result.resume_context is None
+    assert resume_provider.design_test_calls == 1
+    assert resume_provider.dev_test_design_summaries == [
+        "task-loop default test design",
+        "task-loop default test design",
+    ]
+    assert resume_provider.review_test_design_summaries == [
+        "task-loop default test design",
+        "task-loop default test design",
+    ]
 
 
 def test_resume_delivery_flow_defaults_to_current_task_review() -> None:

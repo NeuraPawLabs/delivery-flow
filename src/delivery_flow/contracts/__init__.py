@@ -11,6 +11,7 @@ from delivery_flow.contracts.models import (
     ReviewArtifact,
     RuntimeResult,
     TaskExecutionContext,
+    TestDesignArtifact,
 )
 from delivery_flow.contracts.protocols import CapabilityDetector, ExecutionBackend
 
@@ -29,4 +30,5 @@ __all__ = [
     "ReviewArtifact",
     "RuntimeResult",
     "TaskExecutionContext",
+    "TestDesignArtifact",
 ]

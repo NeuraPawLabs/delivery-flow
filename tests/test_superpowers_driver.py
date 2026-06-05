@@ -13,6 +13,14 @@ class FakeSuperpowersProvider:
         self.calls.append(("plan", payload))
         return {"plan": payload}
 
+    def design_tests(self, payload: object) -> dict[str, object]:
+        self.calls.append(("design_tests", payload))
+        return {
+            "summary": "driver test design",
+            "required_test_scenarios": ["driver pass"],
+            "required_verification_commands": ["uv run pytest"],
+        }
+
     def run_dev(self, payload: object) -> dict[str, object]:
         self.calls.append(("run_dev", payload))
         return {"delivery": payload}
@@ -49,6 +57,7 @@ def test_superpowers_driver_exposes_the_full_minimal_action_surface() -> None:
 
     assert callable(driver.discuss_and_spec)
     assert callable(driver.plan)
+    assert callable(driver.design_tests)
     assert callable(driver.run_dev)
     assert callable(driver.run_review)
     assert callable(driver.run_fix)
@@ -61,6 +70,7 @@ def test_superpowers_driver_delegates_calls_to_provider() -> None:
 
     spec = driver.discuss_and_spec({"ticket": 1})
     plan = driver.plan({"spec": "ok"})
+    test_design = driver.design_tests({"plan": "ok"})
     delivery = driver.run_dev({"task": "build"})
     review = driver.run_review({"diff": "..."})
     fix = driver.run_fix({"finding": "x"})
@@ -68,6 +78,7 @@ def test_superpowers_driver_delegates_calls_to_provider() -> None:
 
     assert spec == {"spec": {"ticket": 1}}
     assert plan == {"plan": {"spec": "ok"}}
+    assert test_design["summary"] == "driver test design"
     assert delivery["delivery"] == {"task": "build"}
     assert review["raw_result"] == "approved"
     assert review["payload"] == {"diff": "..."}
@@ -76,6 +87,7 @@ def test_superpowers_driver_delegates_calls_to_provider() -> None:
     assert provider.calls == [
         ("discuss_and_spec", {"ticket": 1}),
         ("plan", {"spec": "ok"}),
+        ("design_tests", {"plan": "ok"}),
         ("run_dev", {"task": "build"}),
         ("run_review", {"diff": "..."}),
         ("run_fix", {"finding": "x"}),
@@ -86,11 +98,17 @@ def test_superpowers_driver_delegates_calls_to_provider() -> None:
 def test_superpowers_driver_stamps_subagent_execution_metadata_for_post_plan_stages() -> None:
     driver = SuperpowersBackedDriver(provider=FakeSuperpowersProvider())
 
+    test_design = driver.design_tests({"plan": "ok"})
     delivery = driver.run_dev({"task": "build"})
     review = driver.run_review({"diff": "..."})
     fix = driver.run_fix({"finding": "x"})
     final = driver.finalize({"summary": "done"})
 
+    assert test_design["execution_metadata"] == {
+        "backend": "superpowers-backed",
+        "executor_kind": "subagent",
+        "stage": "test_designing",
+    }
     assert delivery["execution_metadata"] == {
         "backend": "superpowers-backed",
         "executor_kind": "subagent",

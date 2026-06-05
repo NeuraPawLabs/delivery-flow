@@ -9,6 +9,7 @@ from delivery_flow.contracts import (
     ReviewArtifact,
     RuntimeResult,
     TaskExecutionContext,
+    TestDesignArtifact,
 )
 from delivery_flow.runtime.engine import DeliveryFlowRuntime
 from delivery_flow.runtime.models import ControllerState, StopReason
@@ -45,6 +46,8 @@ class TaskLoopAdapter:
         self.dev_calls: list[str] = []
         self.review_calls: list[str] = []
         self.fix_calls: list[str] = []
+        self.test_design_payloads: list[object] = []
+        self.context_test_design_summaries: list[str] = []
         self.finalize_calls = 0
 
     def discuss_and_spec(self, payload):
@@ -52,6 +55,20 @@ class TaskLoopAdapter:
 
     def plan(self, payload):
         return self.plan_artifact
+
+    def design_tests(self, payload):
+        self.test_design_payloads.append(payload)
+        result: dict[str, object] = {
+            "summary": "task loop test matrix",
+            "required_test_scenarios": [
+                f"scenario for {task.task_id}" for task in self.plan_artifact.tasks
+            ],
+            "required_verification_commands": ["uv run pytest"],
+        }
+        execution_metadata = self._execution_metadata("test_designing")
+        if execution_metadata is not None:
+            result["execution_metadata"] = execution_metadata
+        return result
 
     def _execution_metadata(self, stage: str) -> dict[str, str] | None:
         if not self.emit_execution_metadata:
@@ -65,6 +82,8 @@ class TaskLoopAdapter:
 
     def run_dev(self, payload):
         assert isinstance(payload, TaskExecutionContext)
+        assert payload.test_design is not None
+        self.context_test_design_summaries.append(payload.test_design.summary)
         self.dev_calls.append(payload.task.task_id)
         result = {
             "delivery_summary": f"implemented {payload.task.task_id}",
@@ -78,6 +97,8 @@ class TaskLoopAdapter:
 
     def run_review(self, payload):
         assert isinstance(payload, TaskExecutionContext)
+        assert payload.test_design is not None
+        self.context_test_design_summaries.append(payload.test_design.summary)
         self.review_calls.append(payload.task.task_id)
         if not self.review_results:
             raise AssertionError("run_review called without a scripted review result")
@@ -89,6 +110,8 @@ class TaskLoopAdapter:
 
     def run_fix(self, payload):
         assert isinstance(payload, TaskExecutionContext)
+        assert payload.test_design is not None
+        self.context_test_design_summaries.append(payload.test_design.summary)
         self.fix_calls.append(payload.task.task_id)
         result = {
             "delivery_summary": f"fixed {payload.task.task_id}",
@@ -127,6 +150,13 @@ def test_runtime_advances_to_next_task_after_task_pass_without_stopping() -> Non
     assert adapter.review_calls == ["task-1", "task-2"]
     assert adapter.fix_calls == []
     assert adapter.finalize_calls == 1
+    assert len(adapter.test_design_payloads) == 1
+    assert adapter.context_test_design_summaries == [
+        "task loop test matrix",
+        "task loop test matrix",
+        "task loop test matrix",
+        "task loop test matrix",
+    ]
     assert result.completed_task_ids == ["task-1", "task-2"]
     assert result.pending_task_id is None
     assert result.open_issue_summaries == []
@@ -135,6 +165,7 @@ def test_runtime_advances_to_next_task_after_task_pass_without_stopping() -> Non
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "running_dev",
@@ -182,6 +213,7 @@ def test_runtime_loops_fix_review_within_one_task_until_pass() -> None:
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "running_fix",
@@ -338,6 +370,7 @@ def test_runtime_surfaces_compact_orchestration_evidence_without_changing_task_l
         "discussing_requirement",
         "writing_spec",
         "planning",
+        "test_designing",
         "running_dev",
         "running_review",
         "running_fix",
@@ -350,13 +383,13 @@ def test_runtime_surfaces_compact_orchestration_evidence_without_changing_task_l
     assert "owner acceptance required: yes" in result.final_summary
     assert (
         "orchestration: backend=superpowers-backed executor_kind=subagent "
-        "stages=running_dev,running_review,running_fix"
+        "stages=test_designing,running_dev,running_review,running_fix"
     ) in result.final_summary
     assert runtime.trace is not None
     assert (
         runtime.trace.execution_summary()
         == "backend=superpowers-backed executor_kind=subagent "
-        "stages=running_dev,running_review,running_fix"
+        "stages=test_designing,running_dev,running_review,running_fix"
     )
     assert runtime.trace.task_events == [
         {"task_id": "task-1", "event": "started"},
@@ -394,6 +427,7 @@ def test_resume_continues_remaining_tasks_after_current_task_review_passes() -> 
                     "discussing_requirement",
                     "writing_spec",
                     "planning",
+                    "test_designing",
                     "running_dev",
                     "running_review",
                     "waiting_for_owner",
@@ -404,6 +438,11 @@ def test_resume_continues_remaining_tasks_after_current_task_review_passes() -> 
                 resume_context=ResumeContextArtifact(
                     plan=_plan("task-1", "task-2"),
                     task_index=0,
+                    test_design=TestDesignArtifact(
+                        summary="resume test design",
+                        required_test_scenarios=["resume task-1", "task-2 pass"],
+                        required_verification_commands=["uv run pytest"],
+                    ),
                     latest_delivery=DeliveryArtifact(delivery_summary="implemented task-1"),
                     latest_review=ReviewArtifact(
                         raw_result="owner_input_required",

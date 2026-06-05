@@ -7,6 +7,7 @@ from delivery_flow.contracts import (
     RequirementArtifact,
     ReviewArtifact,
     TaskExecutionContext,
+    TestDesignArtifact,
 )
 from delivery_flow.contracts.protocols import ExecutionBackend
 
@@ -20,6 +21,9 @@ class FallbackAdapter:
 
     def plan(self, payload: object) -> PlanArtifact | dict[str, object]:
         return self.provider.plan(payload)
+
+    def design_tests(self, payload: object) -> TestDesignArtifact | dict[str, object]:
+        return self.provider.design_tests(payload)
 
     def run_dev(
         self,

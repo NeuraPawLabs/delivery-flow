@@ -161,6 +161,11 @@ Bootstrap-capable platforms include Claude Code, Cursor, and OpenCode. Those
 platforms can inject a strong root-routing bootstrap at session start, while
 this Codex path only publishes the shared skills for discovery.
 
+The delivery loop is `spec -> plan -> test-design -> task-by-task
+dev/review/fix -> finalize -> wait`. `design_tests` must build the test matrix
+after `plan` and before `dev`; no test-design, no dev, unless the owner
+explicitly overrides that gate.
+
 When an `implementation-review` blocker handoff starts a fix run, unresolved
 execution strategy must be selected before code changes start. The
 `delivery-flow` skill should offer `Subagent-driven` and `Inline` as

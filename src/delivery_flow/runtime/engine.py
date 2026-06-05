@@ -13,6 +13,7 @@ from delivery_flow.contracts import (
     ReviewArtifact,
     RuntimeResult,
     TaskExecutionContext,
+    TestDesignArtifact,
 )
 from delivery_flow.contracts.models import ExecutionMetadata, KNOWN_EXECUTION_STRATEGIES
 from delivery_flow.contracts.protocols import CapabilityDetector, ExecutionBackend
@@ -104,7 +105,7 @@ class DeliveryFlowRuntime:
             return
 
         metadata_payload: object | None
-        if isinstance(payload, (DeliveryArtifact, ReviewArtifact, FinalizationArtifact)):
+        if isinstance(payload, (DeliveryArtifact, ReviewArtifact, FinalizationArtifact, TestDesignArtifact)):
             metadata_payload = payload.execution_metadata
         elif isinstance(payload, dict):
             metadata_payload = payload.get("execution_metadata")
@@ -131,6 +132,27 @@ class DeliveryFlowRuntime:
             delivery_summary=str(payload.get("delivery_summary", "unavailable")),
             verification_evidence=[str(item) for item in payload.get("verification_evidence", [])],
             residual_risk=[str(item) for item in payload.get("residual_risk", [])],
+            execution_metadata=self._coerce_execution_metadata(payload.get("execution_metadata")),
+        )
+
+    def _coerce_test_design_artifact(
+        self,
+        payload: TestDesignArtifact | dict[str, object],
+    ) -> TestDesignArtifact:
+        if isinstance(payload, TestDesignArtifact):
+            return payload
+
+        return TestDesignArtifact(
+            summary=str(payload.get("summary", "test design unavailable")),
+            required_test_scenarios=[
+                str(item) for item in payload.get("required_test_scenarios", [])
+            ],
+            required_verification_commands=[
+                str(command) for command in payload.get("required_verification_commands", [])
+            ],
+            deferred_test_scenarios=[
+                str(item) for item in payload.get("deferred_test_scenarios", [])
+            ],
             execution_metadata=self._coerce_execution_metadata(payload.get("execution_metadata")),
         )
 
@@ -239,6 +261,11 @@ class DeliveryFlowRuntime:
         return ResumeContextArtifact(
             plan=self._coerce_plan_artifact(payload["plan"]),
             task_index=int(payload["task_index"]),
+            test_design=(
+                self._coerce_test_design_artifact(payload["test_design"])
+                if payload.get("test_design") is not None
+                else None
+            ),
             latest_delivery=(
                 self._coerce_delivery_artifact(payload["latest_delivery"])
                 if payload.get("latest_delivery") is not None
@@ -297,12 +324,16 @@ class DeliveryFlowRuntime:
         self,
         plan_artifact: PlanArtifact,
         task_index: int,
+        test_design: TestDesignArtifact | dict[str, object] | None,
         latest_delivery: DeliveryArtifact | dict[str, object] | None,
         latest_review: ReviewArtifact | dict[str, object] | None,
     ) -> ResumeContextArtifact:
         return ResumeContextArtifact(
             plan=plan_artifact,
             task_index=task_index,
+            test_design=(
+                self._coerce_test_design_artifact(test_design) if test_design is not None else None
+            ),
             latest_delivery=(
                 self._coerce_delivery_artifact(latest_delivery) if latest_delivery is not None else None
             ),
@@ -314,6 +345,7 @@ class DeliveryFlowRuntime:
         plan: PlanArtifact,
         task_index: int,
         *,
+        test_design: TestDesignArtifact | dict[str, object] | None = None,
         latest_delivery: DeliveryArtifact | dict[str, object] | None = None,
         latest_review: ReviewArtifact | dict[str, object] | None = None,
         owner_response: str | None = None,
@@ -323,6 +355,9 @@ class DeliveryFlowRuntime:
             task=plan.tasks[task_index],
             task_index=task_index,
             total_tasks=len(plan.tasks),
+            test_design=(
+                self._coerce_test_design_artifact(test_design) if test_design is not None else None
+            ),
             latest_delivery=(
                 self._coerce_delivery_artifact(latest_delivery) if latest_delivery is not None else None
             ),
@@ -547,6 +582,7 @@ class DeliveryFlowRuntime:
         task_index: int,
         review_payload: ReviewArtifact | dict[str, object],
         latest_delivery: DeliveryArtifact | dict[str, object],
+        test_design: TestDesignArtifact | dict[str, object] | None,
         *,
         owner_response: str | None = None,
     ) -> tuple[RuntimeResult | None, DeliveryArtifact | dict[str, object]]:
@@ -580,7 +616,13 @@ class DeliveryFlowRuntime:
                         action="owner_decision_required",
                         summary=self._open_issue_summaries[0],
                     )
-            resume_context = self._build_resume_context(plan_artifact, task_index, latest_delivery, review_dict)
+            resume_context = self._build_resume_context(
+                plan_artifact,
+                task_index,
+                test_design,
+                latest_delivery,
+                review_dict,
+            )
             return (
                 self._stop(
                     StopReason.NEEDS_OWNER_DECISION,
@@ -620,7 +662,13 @@ class DeliveryFlowRuntime:
                     StopReason.VERIFICATION_UNAVAILABLE,
                     latest_delivery,
                     review_dict,
-                    resume_context=self._build_resume_context(plan_artifact, task_index, latest_delivery, None),
+                    resume_context=self._build_resume_context(
+                        plan_artifact,
+                        task_index,
+                        test_design,
+                        latest_delivery,
+                        None,
+                    ),
                 ),
                 latest_delivery,
             )
@@ -651,7 +699,13 @@ class DeliveryFlowRuntime:
                     StopReason.SAME_BLOCKER,
                     latest_delivery,
                     review_dict,
-                    resume_context=self._build_resume_context(plan_artifact, task_index, latest_delivery, review_dict),
+                    resume_context=self._build_resume_context(
+                        plan_artifact,
+                        task_index,
+                        test_design,
+                        latest_delivery,
+                        review_dict,
+                    ),
                 ),
                 latest_delivery,
             )
@@ -662,6 +716,7 @@ class DeliveryFlowRuntime:
         fix_context = self._build_task_context(
             plan_artifact,
             task_index,
+            test_design=test_design,
             latest_delivery=latest_delivery,
             latest_review=review_dict,
             owner_response=owner_response,
@@ -672,6 +727,7 @@ class DeliveryFlowRuntime:
         review_context = self._build_task_context(
             plan_artifact,
             task_index,
+            test_design=test_design,
             latest_delivery=fix_result,
             owner_response=owner_response,
         )
@@ -681,6 +737,7 @@ class DeliveryFlowRuntime:
             task_index,
             next_review,
             fix_result,
+            test_design,
             owner_response=owner_response,
         )
 
@@ -688,7 +745,8 @@ class DeliveryFlowRuntime:
         valid = {
             ControllerState.DISCUSSING_REQUIREMENT: {ControllerState.WRITING_SPEC},
             ControllerState.WRITING_SPEC: {ControllerState.PLANNING},
-            ControllerState.PLANNING: {ControllerState.RUNNING_DEV, ControllerState.WAITING_FOR_OWNER},
+            ControllerState.PLANNING: {ControllerState.TEST_DESIGNING, ControllerState.WAITING_FOR_OWNER},
+            ControllerState.TEST_DESIGNING: {ControllerState.RUNNING_DEV, ControllerState.WAITING_FOR_OWNER},
             ControllerState.RUNNING_DEV: {ControllerState.RUNNING_REVIEW},
             ControllerState.RUNNING_REVIEW: {
                 ControllerState.RUNNING_DEV,
@@ -699,6 +757,7 @@ class DeliveryFlowRuntime:
             ControllerState.RUNNING_FIX: {ControllerState.RUNNING_REVIEW},
             ControllerState.RUNNING_FINALIZE: {ControllerState.WAITING_FOR_OWNER},
             ControllerState.WAITING_FOR_OWNER: {
+                ControllerState.TEST_DESIGNING,
                 ControllerState.RUNNING_DEV,
                 ControllerState.RUNNING_REVIEW,
             },
@@ -731,11 +790,45 @@ class DeliveryFlowRuntime:
         self._owner_acceptance_required = finalization_artifact.owner_acceptance_required
         return self._stop(StopReason.PASS, finalization_artifact, {"raw_result": "approved"})
 
+    def _design_tests(
+        self,
+        *,
+        spec_result: object,
+        plan_artifact: PlanArtifact,
+    ) -> TestDesignArtifact:
+        design_tests = getattr(self.adapter, "design_tests", None)
+        if not callable(design_tests):
+            raise RuntimeError("Runtime adapter must expose design_tests before dev can start")
+
+        self._transition_to(ControllerState.TEST_DESIGNING)
+        test_design_result = design_tests(
+            {
+                "spec": spec_result,
+                "plan": plan_artifact,
+            }
+        )
+        test_design = self._coerce_test_design_artifact(test_design_result)
+        self._record_execution_metadata(test_design)
+        return test_design
+
+    def _resume_needs_initial_test_design(self, previous_result: RuntimeResult) -> bool:
+        resume_context = previous_result.resume_context
+        return (
+            previous_result.stop_reason is StopReason.NEEDS_OWNER_DECISION
+            and resume_context is not None
+            and resume_context.test_design is None
+            and resume_context.latest_delivery is None
+            and resume_context.latest_review is None
+            and previous_result.open_issue_summaries == ["choose execution strategy"]
+            and self.execution_strategy != "unresolved"
+        )
+
     def _execute_plan_from_task(
         self,
         plan_artifact: PlanArtifact,
         start_task_index: int,
         *,
+        test_design: TestDesignArtifact | dict[str, object] | None,
         latest_delivery: DeliveryArtifact | dict[str, object] | None = None,
         latest_review: ReviewArtifact | dict[str, object] | None = None,
         start_with_review: bool = False,
@@ -761,6 +854,7 @@ class DeliveryFlowRuntime:
                 review_context = self._build_task_context(
                     plan_artifact,
                     task_index,
+                    test_design=test_design,
                     latest_delivery=latest_delivery,
                     latest_review=latest_review,
                     owner_response=current_owner_response,
@@ -771,6 +865,7 @@ class DeliveryFlowRuntime:
                     task_index,
                     review_result,
                     latest_delivery,
+                    test_design,
                     owner_response=current_owner_response,
                 )
             else:
@@ -778,6 +873,7 @@ class DeliveryFlowRuntime:
                 dev_context = self._build_task_context(
                     plan_artifact,
                     task_index,
+                    test_design=test_design,
                     latest_delivery=latest_delivery if is_resumed_task else None,
                     latest_review=latest_review if is_resumed_task else None,
                     owner_response=current_owner_response,
@@ -788,6 +884,7 @@ class DeliveryFlowRuntime:
                 review_context = self._build_task_context(
                     plan_artifact,
                     task_index,
+                    test_design=test_design,
                     latest_delivery=latest_delivery,
                     owner_response=current_owner_response,
                 )
@@ -797,6 +894,7 @@ class DeliveryFlowRuntime:
                     task_index,
                     review_result,
                     latest_delivery,
+                    test_design,
                     owner_response=current_owner_response,
                 )
 
@@ -846,9 +944,10 @@ class DeliveryFlowRuntime:
                     "findings": ["choose execution strategy"],
                     "owner_decision_reason": "choose execution strategy",
                 },
-                resume_context=self._build_resume_context(plan_artifact, 0, None, None),
+                resume_context=self._build_resume_context(plan_artifact, 0, None, None, None),
             )
-        return self._execute_plan_from_task(plan_artifact, 0)
+        test_design = self._design_tests(spec_result=spec_result, plan_artifact=plan_artifact)
+        return self._execute_plan_from_task(plan_artifact, 0, test_design=test_design)
 
     def resume(self, payload: ResumeRequestArtifact | dict[str, object]) -> RuntimeResult:
         if self.adapter is None:
@@ -870,6 +969,15 @@ class DeliveryFlowRuntime:
         current_task = plan_artifact.tasks[resume_context.task_index]
         if previous_result.pending_task_id != current_task.task_id:
             raise ValueError("Resume requests require pending_task_id to match resume_context.task_index")
+        test_design = resume_context.test_design
+        needs_initial_test_design = self._resume_needs_initial_test_design(previous_result)
+        if test_design is None and needs_initial_test_design:
+            test_design = self._design_tests(
+                spec_result={"resume_context": {"owner_response": request.owner_response}},
+                plan_artifact=plan_artifact,
+            )
+        if test_design is None:
+            raise ValueError("Resume requests require previous_result.resume_context.test_design")
         start_with_review = (
             previous_result.stop_reason is StopReason.NEEDS_OWNER_DECISION
             and resume_context.latest_delivery is not None
@@ -879,6 +987,9 @@ class DeliveryFlowRuntime:
             self.trace.record_resume(
                 task_id=current_task.task_id,
                 target_stage=(
+                    ControllerState.TEST_DESIGNING.value
+                    if needs_initial_test_design
+                    else
                     ControllerState.RUNNING_REVIEW.value
                     if start_with_review
                     else ControllerState.RUNNING_DEV.value
@@ -889,9 +1000,10 @@ class DeliveryFlowRuntime:
         return self._execute_plan_from_task(
             plan_artifact,
             resume_context.task_index,
+            test_design=test_design,
             latest_delivery=resume_context.latest_delivery,
             latest_review=resume_context.latest_review,
             start_with_review=start_with_review,
             owner_response=request.owner_response,
-            resumed_current_task=True,
+            resumed_current_task=not needs_initial_test_design,
         )
