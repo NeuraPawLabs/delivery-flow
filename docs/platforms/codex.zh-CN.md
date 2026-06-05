@@ -24,15 +24,15 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 
 1. 克隆仓库：
    ```bash
-   git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/delivery-flow
+   git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/neurapaw-delivery
    ```
 
 2. 创建原生 skill discovery 软链接：
    ```bash
    mkdir -p ~/.agents/skills
-   ln -s ~/.codex/delivery-flow/skills/delivery-flow ~/.agents/skills/delivery-flow
-   ln -s ~/.codex/delivery-flow/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
-   ln -s ~/.codex/delivery-flow/skills/implementation-review ~/.agents/skills/implementation-review
+   ln -s ~/.codex/neurapaw-delivery/skills/delivery-flow ~/.agents/skills/delivery-flow
+   ln -s ~/.codex/neurapaw-delivery/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
+   ln -s ~/.codex/neurapaw-delivery/skills/implementation-review ~/.agents/skills/implementation-review
    ```
 
 3. 重启 Codex。
@@ -54,9 +54,9 @@ Windows 上可以使用 junction：
 
 ```powershell
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.agents\skills"
-cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills\delivery-flow"
-cmd /c mklink /J "$env:USERPROFILE\.agents\skills\using-delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills\using-delivery-flow"
-cmd /c mklink /J "$env:USERPROFILE\.agents\skills\implementation-review" "$env:USERPROFILE\.codex\delivery-flow\skills\implementation-review"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFILE\.codex\neurapaw-delivery\skills\delivery-flow"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\using-delivery-flow" "$env:USERPROFILE\.codex\neurapaw-delivery\skills\using-delivery-flow"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\implementation-review" "$env:USERPROFILE\.codex\neurapaw-delivery\skills\implementation-review"
 ```
 
 ## 工作方式
@@ -80,9 +80,13 @@ frontmatter，并通过原生 skill discovery 按需加载 skill。这是 discov
 - `implementation-review` 是通用 implementation review skill
 - 不需要 `AGENTS.md`
 
+Codex source namespace 是 `neurapaw-delivery`，由
+`.codex-plugin/plugin.json` 定义。推荐的 clone 目录也使用同名路径，
+这样本地路径和 Codex component display 保持一致。
+
 Codex 可能会用来源 namespace 展示这些入口，例如
-`delivery-flow:delivery-flow`、`delivery-flow:using-delivery-flow` 和
-`delivery-flow:implementation-review`。只要三个 skill 都能被发现，这种展示形态就是有效安装。
+`neurapaw-delivery:delivery-flow`、`neurapaw-delivery:using-delivery-flow` 和
+`neurapaw-delivery:implementation-review`。只要三个 skill 都能被发现，这种展示形态就是有效安装。
 `/skills` UI 可能会把它们显示为 namespaced entries。
 
 安装完成后，这个 skill 提供一条稳定的 controller contract，并支持两个显式 mode：
@@ -93,6 +97,9 @@ Codex 可能会用来源 namespace 展示这些入口，例如
 - execution-strategy 优先级固定为：`owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
 - `plan` 之后由主 agent 持续推进执行，直到进入终止态
 - 在 `superpowers-backed` 下，`subagent-driven` 会用 subagents 执行 plan 之后的 `dev/review/fix`，显式 `inline` 则保持在当前会话内执行
+- 当 `implementation-review` blocker handoff 启动 fix run 时，未确定的 execution strategy 必须先选择，才能开始改代码
+- `Subagent-driven` 和 `Inline` 都是 `delivery-flow` 的 execution_strategy 选项；两者下 `delivery-flow` 都仍是顶层 controller
+- 显式 `neurapaw-delivery:delivery-flow` prompt 的第一条 owner-facing 响应应确认 `Loaded neurapaw-delivery:delivery-flow as top-level controller.`
 - `fix` 完成后必须回到 `review`，不会在 task 边界停下
 - 严格 `pass` 会拒绝 unresolved required changes、testing issues、maintainability issues
 
@@ -142,7 +149,7 @@ test -L ~/.agents/skills/implementation-review
 test -f ~/.agents/skills/delivery-flow/SKILL.md
 test -f ~/.agents/skills/using-delivery-flow/SKILL.md
 test -f ~/.agents/skills/implementation-review/SKILL.md
-codex debug prompt-input "list delivery-flow skills" | rg "delivery-flow:(delivery-flow|using-delivery-flow|implementation-review)"
+codex debug prompt-input "list delivery-flow skills" | rg "neurapaw-delivery:(delivery-flow|using-delivery-flow|implementation-review)"
 ```
 
 Windows PowerShell 可以用：
@@ -159,7 +166,7 @@ Test-Path "$env:USERPROFILE\.agents\skills\implementation-review\SKILL.md"
 验证仓库基线：
 
 ```bash
-cd ~/.codex/delivery-flow
+cd ~/.codex/neurapaw-delivery
 uv run pytest
 ```
 
@@ -176,6 +183,8 @@ uv run pytest
 - `plan` 之后由主 agent 持续推进执行，直到进入终止态
 - 在 `superpowers-backed` 下，`subagent-driven` 通过 subagents 调度 plan 之后的 `dev/review/fix`，显式 `inline` 则保持在当前会话内执行
 - 如果 execution strategy 还未确定，主 agent 可以在 `plan` 之后询问一次
+- 如果 `implementation-review` blocker handoff 启动 fix run，未确定的 execution strategy 必须先选择，才能开始改代码
+- `Subagent-driven` 和 `Inline` 都是 `delivery-flow` 的 execution_strategy 选项；两者下 `delivery-flow` 都仍是顶层 controller
 - 如果 execution strategy 已经确定，skill 不会再次打开通用执行方式选择
 - 如果 owner 在运行中显式修改 execution strategy，新策略从下一个可调度 task 开始生效
 - 一旦 `delivery-flow` 接管 plan 之后的工作流，上游通用模板不得覆盖已确定的 strategy
@@ -187,7 +196,7 @@ uv run pytest
 ## 更新
 
 ```bash
-cd ~/.codex/delivery-flow && git pull
+cd ~/.codex/neurapaw-delivery && git pull
 uv run pytest
 ```
 
@@ -199,7 +208,7 @@ uv run pytest
 rm ~/.agents/skills/delivery-flow
 rm ~/.agents/skills/using-delivery-flow
 rm ~/.agents/skills/implementation-review
-rm -rf ~/.codex/delivery-flow
+rm -rf ~/.codex/neurapaw-delivery
 ```
 
 ## 常见问题
@@ -227,5 +236,5 @@ Windows PowerShell 可以用：
 ### 测试跑不起来
 
 1. 确认系统里有 `uv`
-2. 在 `~/.codex/delivery-flow` 内运行 `uv sync`
+2. 在 `~/.codex/neurapaw-delivery` 内运行 `uv sync`
 3. 再运行 `uv run pytest`

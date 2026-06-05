@@ -5,11 +5,11 @@ Enable `delivery-flow` as a local Codex skill through native skill discovery.
 ## Quick Install
 
 ```bash
-git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/delivery-flow
+git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/neurapaw-delivery
 mkdir -p ~/.agents/skills
-ln -s ~/.codex/delivery-flow/skills/delivery-flow ~/.agents/skills/delivery-flow
-ln -s ~/.codex/delivery-flow/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
-ln -s ~/.codex/delivery-flow/skills/implementation-review ~/.agents/skills/implementation-review
+ln -s ~/.codex/neurapaw-delivery/skills/delivery-flow ~/.agents/skills/delivery-flow
+ln -s ~/.codex/neurapaw-delivery/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
+ln -s ~/.codex/neurapaw-delivery/skills/implementation-review ~/.agents/skills/implementation-review
 ```
 
 Then restart Codex.
@@ -24,24 +24,24 @@ Then restart Codex.
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/delivery-flow
+   git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/neurapaw-delivery
    ```
 
 2. **Expose each shared skill directory:**
    ```bash
    mkdir -p ~/.agents/skills
-   ln -s ~/.codex/delivery-flow/skills/delivery-flow ~/.agents/skills/delivery-flow
-   ln -s ~/.codex/delivery-flow/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
-   ln -s ~/.codex/delivery-flow/skills/implementation-review ~/.agents/skills/implementation-review
+   ln -s ~/.codex/neurapaw-delivery/skills/delivery-flow ~/.agents/skills/delivery-flow
+   ln -s ~/.codex/neurapaw-delivery/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
+   ln -s ~/.codex/neurapaw-delivery/skills/implementation-review ~/.agents/skills/implementation-review
    ```
 
    If old links already exist:
    ```bash
    rm ~/.agents/skills/delivery-flow
    rm -f ~/.agents/skills/using-delivery-flow ~/.agents/skills/implementation-review
-   ln -s ~/.codex/delivery-flow/skills/delivery-flow ~/.agents/skills/delivery-flow
-   ln -s ~/.codex/delivery-flow/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
-   ln -s ~/.codex/delivery-flow/skills/implementation-review ~/.agents/skills/implementation-review
+   ln -s ~/.codex/neurapaw-delivery/skills/delivery-flow ~/.agents/skills/delivery-flow
+   ln -s ~/.codex/neurapaw-delivery/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
+   ln -s ~/.codex/neurapaw-delivery/skills/implementation-review ~/.agents/skills/implementation-review
    ```
 
 3. **Restart Codex** so native skill discovery reloads.
@@ -52,9 +52,9 @@ Use a junction instead of a symlink:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.agents\skills"
-cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills\delivery-flow"
-cmd /c mklink /J "$env:USERPROFILE\.agents\skills\using-delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills\using-delivery-flow"
-cmd /c mklink /J "$env:USERPROFILE\.agents\skills\implementation-review" "$env:USERPROFILE\.codex\delivery-flow\skills\implementation-review"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFILE\.codex\neurapaw-delivery\skills\delivery-flow"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\using-delivery-flow" "$env:USERPROFILE\.codex\neurapaw-delivery\skills\using-delivery-flow"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\implementation-review" "$env:USERPROFILE\.codex\neurapaw-delivery\skills\implementation-review"
 ```
 
 The shared skill entries should look like this:
@@ -74,9 +74,13 @@ Each Codex skill must be exposed as its own direct child of
 `~/.agents/skills/delivery-flow`, because that makes the three skills appear as
 nested content under one entry and can confuse skill selector display.
 
+The Codex source namespace is `neurapaw-delivery`, defined by
+`.codex-plugin/plugin.json`. Keep the clone directory aligned with that
+namespace so local paths and Codex's component display stay consistent.
+
 Codex may display these entries with a source namespace, such as
-`delivery-flow:delivery-flow`, `delivery-flow:using-delivery-flow`, and
-`delivery-flow:implementation-review`. That display shape is acceptable as long
+`neurapaw-delivery:delivery-flow`, `neurapaw-delivery:using-delivery-flow`, and
+`neurapaw-delivery:implementation-review`. That display shape is acceptable as long
 as all three skills are discoverable.
 
 ## Capability Model
@@ -98,7 +102,7 @@ test -L ~/.agents/skills/implementation-review
 test -f ~/.agents/skills/delivery-flow/SKILL.md
 test -f ~/.agents/skills/using-delivery-flow/SKILL.md
 test -f ~/.agents/skills/implementation-review/SKILL.md
-codex debug prompt-input "list delivery-flow skills" | rg "delivery-flow:(delivery-flow|using-delivery-flow|implementation-review)"
+codex debug prompt-input "list delivery-flow skills" | rg "neurapaw-delivery:(delivery-flow|using-delivery-flow|implementation-review)"
 ```
 
 On Windows PowerShell:
@@ -115,7 +119,7 @@ Test-Path "$env:USERPROFILE\.agents\skills\implementation-review\SKILL.md"
 Run the repo verification baseline:
 
 ```bash
-cd ~/.codex/delivery-flow
+cd ~/.codex/neurapaw-delivery
 uv run pytest
 ```
 
@@ -126,8 +130,8 @@ Expected result:
 - `using-delivery-flow/SKILL.md` exists as a direct skill entry
 - `implementation-review/SKILL.md` exists as a direct skill entry
 - `codex debug prompt-input "list delivery-flow skills"` shows
-  `delivery-flow:delivery-flow`, `delivery-flow:using-delivery-flow`, and
-  `delivery-flow:implementation-review`
+  `neurapaw-delivery:delivery-flow`, `neurapaw-delivery:using-delivery-flow`, and
+  `neurapaw-delivery:implementation-review`
 - the `/skills` UI may display them as namespaced entries
 - `uv run pytest` completes successfully
 - all repository tests pass
@@ -135,7 +139,7 @@ Expected result:
 ## Updating
 
 ```bash
-cd ~/.codex/delivery-flow
+cd ~/.codex/neurapaw-delivery
 git pull
 uv run pytest
 ```
@@ -157,6 +161,19 @@ Bootstrap-capable platforms include Claude Code, Cursor, and OpenCode. Those
 platforms can inject a strong root-routing bootstrap at session start, while
 this Codex path only publishes the shared skills for discovery.
 
+When an `implementation-review` blocker handoff starts a fix run, unresolved
+execution strategy must be selected before code changes start. The
+`delivery-flow` skill should offer `Subagent-driven` and `Inline` as
+`delivery-flow` execution_strategy options, state that `delivery-flow` remains
+the top-level controller for both options, and wait for the owner to choose
+unless the handoff already includes an explicit `execution_strategy`.
+
+For explicit `neurapaw-delivery:delivery-flow` prompts, the first owner-facing
+response should include `Loaded neurapaw-delivery:delivery-flow as top-level
+controller.` If observable skill-read output only shows subordinate
+`superpowers:*` skills and not `neurapaw-delivery:delivery-flow`, treat
+activation as failed.
+
 ## Uninstalling
 
 ```bash
@@ -176,5 +193,5 @@ Remove-Item "$env:USERPROFILE\.agents\skills\implementation-review" -Force
 Optionally remove the clone:
 
 ```bash
-rm -rf ~/.codex/delivery-flow
+rm -rf ~/.codex/neurapaw-delivery
 ```

@@ -25,15 +25,15 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 
 1. Clone the repo:
    ```bash
-   git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/delivery-flow
+   git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/neurapaw-delivery
    ```
 
 2. Create the native skill discovery symlink:
    ```bash
    mkdir -p ~/.agents/skills
-   ln -s ~/.codex/delivery-flow/skills/delivery-flow ~/.agents/skills/delivery-flow
-   ln -s ~/.codex/delivery-flow/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
-   ln -s ~/.codex/delivery-flow/skills/implementation-review ~/.agents/skills/implementation-review
+   ln -s ~/.codex/neurapaw-delivery/skills/delivery-flow ~/.agents/skills/delivery-flow
+   ln -s ~/.codex/neurapaw-delivery/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
+   ln -s ~/.codex/neurapaw-delivery/skills/implementation-review ~/.agents/skills/implementation-review
    ```
 
 3. Restart Codex.
@@ -57,9 +57,9 @@ Use a junction instead of a symlink:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.agents\skills"
-cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills\delivery-flow"
-cmd /c mklink /J "$env:USERPROFILE\.agents\skills\using-delivery-flow" "$env:USERPROFILE\.codex\delivery-flow\skills\using-delivery-flow"
-cmd /c mklink /J "$env:USERPROFILE\.agents\skills\implementation-review" "$env:USERPROFILE\.codex\delivery-flow\skills\implementation-review"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\delivery-flow" "$env:USERPROFILE\.codex\neurapaw-delivery\skills\delivery-flow"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\using-delivery-flow" "$env:USERPROFILE\.codex\neurapaw-delivery\skills\using-delivery-flow"
+cmd /c mklink /J "$env:USERPROFILE\.agents\skills\implementation-review" "$env:USERPROFILE\.codex\neurapaw-delivery\skills\implementation-review"
 ```
 
 ## How It Works
@@ -84,9 +84,13 @@ exposes the shared skills:
 - `implementation-review` is the general implementation review skill
 - no `AGENTS.md` file is required
 
+The Codex source namespace is `neurapaw-delivery`, defined by
+`.codex-plugin/plugin.json`. The recommended clone directory uses the same name
+so local paths and Codex's component display stay aligned.
+
 Codex may show these entries with a source namespace, for example
-`delivery-flow:delivery-flow`, `delivery-flow:using-delivery-flow`, and
-`delivery-flow:implementation-review`. That is still a valid install as long as
+`neurapaw-delivery:delivery-flow`, `neurapaw-delivery:using-delivery-flow`, and
+`neurapaw-delivery:implementation-review`. That is still a valid install as long as
 all three skills are discoverable. The `/skills` UI may display them as
 namespaced entries.
 
@@ -99,6 +103,9 @@ modes:
 - execution-strategy priority is `owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
 - after `plan`, the main agent keeps execution moving until a terminal stop
 - in `superpowers-backed`, `subagent-driven` runs post-plan `dev/review/fix` via subagents and explicit `inline` keeps them in the current session
+- after an `implementation-review` blocker handoff starts a fix run, unresolved execution strategy must be selected before code changes start
+- `Subagent-driven` and `Inline` are `delivery-flow` execution_strategy options; `delivery-flow` remains the top-level controller for both
+- explicit `neurapaw-delivery:delivery-flow` prompts should first confirm `Loaded neurapaw-delivery:delivery-flow as top-level controller.`
 - `fix` must be followed by `review`, with no stop/wait at task boundaries
 - strict `pass` rejects unresolved required changes, testing issues, and maintainability issues
 
@@ -149,7 +156,7 @@ test -L ~/.agents/skills/implementation-review
 test -f ~/.agents/skills/delivery-flow/SKILL.md
 test -f ~/.agents/skills/using-delivery-flow/SKILL.md
 test -f ~/.agents/skills/implementation-review/SKILL.md
-codex debug prompt-input "list delivery-flow skills" | rg "delivery-flow:(delivery-flow|using-delivery-flow|implementation-review)"
+codex debug prompt-input "list delivery-flow skills" | rg "neurapaw-delivery:(delivery-flow|using-delivery-flow|implementation-review)"
 ```
 
 On Windows PowerShell:
@@ -166,7 +173,7 @@ Test-Path "$env:USERPROFILE\.agents\skills\implementation-review\SKILL.md"
 Verify the repository baseline:
 
 ```bash
-cd ~/.codex/delivery-flow
+cd ~/.codex/neurapaw-delivery
 uv run pytest
 ```
 
@@ -183,6 +190,8 @@ Once installed, `delivery-flow` defaults into one runtime-backed controller loop
 - continuous main-agent execution after planning until a terminal stop
 - in `superpowers-backed`, `subagent-driven` dispatches subagents for post-plan `dev/review/fix` and explicit `inline` keeps them in the current session
 - if execution strategy is unresolved, the main agent may ask once after planning
+- after an `implementation-review` blocker handoff starts a fix run, unresolved execution strategy must be selected before code changes start
+- `Subagent-driven` and `Inline` are `delivery-flow` execution_strategy options; `delivery-flow` remains the top-level controller for both
 - if execution strategy is already determined, the skill continues without reopening a generic execution-choice prompt
 - if the owner explicitly changes execution strategy mid-run, the new strategy applies from the next schedulable task
 - once `delivery-flow` owns post-plan workflow, upstream generic templates do not override the determined strategy
@@ -194,7 +203,7 @@ Once installed, `delivery-flow` defaults into one runtime-backed controller loop
 ## Updating
 
 ```bash
-cd ~/.codex/delivery-flow && git pull
+cd ~/.codex/neurapaw-delivery && git pull
 uv run pytest
 ```
 
@@ -207,7 +216,7 @@ metadata.
 rm ~/.agents/skills/delivery-flow
 rm ~/.agents/skills/using-delivery-flow
 rm ~/.agents/skills/implementation-review
-rm -rf ~/.codex/delivery-flow
+rm -rf ~/.codex/neurapaw-delivery
 ```
 
 ## Troubleshooting
@@ -235,5 +244,5 @@ On Windows PowerShell:
 ### Tests do not run
 
 1. Make sure `uv` is installed.
-2. Run `uv sync` inside `~/.codex/delivery-flow` if the environment is missing.
+2. Run `uv sync` inside `~/.codex/neurapaw-delivery` if the environment is missing.
 3. Re-run `uv run pytest`.

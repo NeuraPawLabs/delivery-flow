@@ -18,6 +18,7 @@ Fallback exists to preserve the same owner-facing workflow contract with a weake
 ## Execution Strategy Rules
 
 - if `execution_strategy=unresolved`, the main agent may ask once after planning before starting post-plan work
+- if an `implementation-review` handoff starts a fix run and `execution_strategy=unresolved`, the main agent must ask once before code changes
 - if execution strategy is already determined, `fallback` must not re-open that choice through generic upstream templates
 - fallback preserves the same strategy semantics even when executor capability is weaker than `superpowers-backed`
 - if the owner explicitly changes strategy mid-run, the controller applies the change from the next schedulable task

@@ -18,6 +18,19 @@ Use this skill when one main agent should keep work moving through:
 
 The main agent owns workflow control. Backends provide capability, but they do not define workflow state.
 
+## Activation Proof
+
+When the owner explicitly names `neurapaw-delivery:delivery-flow` or copies a
+handoff prompt that names it, the main agent must load this `SKILL.md` before
+loading subordinate skills. The first owner-facing response must include:
+
+`Loaded neurapaw-delivery:delivery-flow as top-level controller.`
+
+The main agent may then load subordinate skills such as `superpowers:*`, but
+must not use any subordinate skill as the top-level process skill. If the
+observable `Explored` / skill-read output shows only subordinate skills and not
+`neurapaw-delivery:delivery-flow`, that is a failed activation.
+
 ## Routing Decision
 
 Re-evaluate routing on each new user turn.
@@ -84,6 +97,7 @@ Do not use it for:
 - after ownership is taken, execution stays task-by-task `dev -> review -> fix -> review ...` until strict `pass`
 - after planning, the main agent keeps execution moving task by task until a terminal stop
 - post-plan execution is task-by-task
+- implementation-review handoffs start a fix run, but do not grant permission to start code changes before execution strategy is confirmed
 - in `superpowers-backed`, post-plan `dev`, `review`, and `fix` run via subagents
 - in `fallback`, the same post-plan contract is preserved natively
 - review results normalize to exactly:
@@ -113,12 +127,37 @@ Execution strategy resolves by this priority:
 Question timing is strict:
 
 - if `execution_strategy=unresolved` and multiple valid post-plan paths remain, the main agent may ask once after planning
+- if an implementation-review handoff starts a fix run and `execution_strategy` is unresolved, the main agent must ask once before code changes and must not treat the handoff prompt as permission to start fixing
 - if execution strategy is already determined, the main agent must not ask again at task boundaries, review loops, or later plan handoffs
 - if the owner explicitly changes strategy mid-run, the main agent updates workflow state and applies it from the next schedulable task
 
 Override rule:
 
 - once `delivery-flow` has taken ownership of post-plan workflow, upstream generic planning templates must not reopen execution-strategy selection if strategy is already determined
+
+## Implementation-Review Handoff
+
+When the owner provides `implementation-review` findings with a prompt such as
+`Use neurapaw-delivery:delivery-flow to start a fix run from the implementation-review findings:`,
+`delivery-flow` must treat it as a request to start a fix run, not as direct permission to edit code.
+First prove activation as described in `Activation Proof`.
+
+First establish fix scope from:
+
+- findings
+- active plan
+- linked spec
+- affected files
+- required verification
+
+Then resolve `execution_strategy`.
+
+If `execution_strategy` is unresolved, the main agent must stop before code changes and offer two `delivery-flow` execution_strategy options:
+
+1. `Subagent-driven` (recommended) - `delivery-flow` stays the top-level controller; in `superpowers-backed` mode it uses fresh subagents for fix work and review loops when available
+2. `Inline` - `delivery-flow` stays the top-level controller; fix in the current session, then review before claiming completion
+
+Ask `Which approach?` and wait for the owner to choose. Once the owner selects, record the selected `execution_strategy` and continue the fix/review loop. If the handoff already contains an explicit owner choice such as `execution_strategy=inline` or `execution_strategy=subagent-driven`, use that choice without asking again.
 
 ## Stop Rules
 

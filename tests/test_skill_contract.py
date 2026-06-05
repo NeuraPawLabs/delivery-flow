@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from types import SimpleNamespace
@@ -23,6 +24,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 def _read(relative_path: str) -> str:
     return (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+
+
+def _read_json(relative_path: str) -> dict[str, object]:
+    return json.loads((REPO_ROOT / relative_path).read_text(encoding="utf-8"))
 
 
 def _frontmatter_value(document: str, key: str) -> str:
@@ -248,12 +253,16 @@ def test_discovery_prerequisites_are_executable_locally(tmp_path: Path) -> None:
 
     skills_dir = tmp_path / ".agents" / "skills"
     skills_dir.mkdir(parents=True)
-    install_path = skills_dir / "delivery-flow"
-    install_path.symlink_to(REPO_ROOT / "skills", target_is_directory=True)
 
-    assert install_path.is_symlink()
-    assert (install_path / "delivery-flow" / "SKILL.md").is_file()
-    assert (install_path / "using-delivery-flow" / "SKILL.md").is_file()
+    for skill_name in ("delivery-flow", "using-delivery-flow", "implementation-review"):
+        install_path = skills_dir / skill_name
+        install_path.symlink_to(REPO_ROOT / "skills" / skill_name, target_is_directory=True)
+
+        assert install_path.is_symlink()
+        assert (install_path / "SKILL.md").is_file()
+
+    assert not (skills_dir / "delivery-flow" / "using-delivery-flow").exists()
+    assert not (skills_dir / "delivery-flow" / "implementation-review").exists()
 
 
 def test_activation_prerequisites_align_skill_metadata_with_documented_trigger_paths() -> None:
@@ -301,6 +310,14 @@ def test_shared_skill_surface_exists() -> None:
     assert (REPO_ROOT / "skills" / "delivery-flow" / "SKILL.md").is_file()
     assert (REPO_ROOT / "skills" / "using-delivery-flow" / "SKILL.md").is_file()
     assert (REPO_ROOT / "skills" / "implementation-review" / "SKILL.md").is_file()
+
+
+def test_codex_plugin_manifest_declares_non_redundant_source_namespace() -> None:
+    manifest = _read_json(".codex-plugin/plugin.json")
+
+    assert manifest["name"] == "neurapaw-delivery"
+    assert manifest["skills"] == "./skills/"
+    assert manifest["name"] != "delivery-flow"
 
 
 def test_codex_shared_install_surface_exposes_shared_skills(tmp_path: Path) -> None:
@@ -389,7 +406,13 @@ def test_implementation_review_is_a_general_project_review_skill() -> None:
         "verification:",
         "residual risk:",
         "next action:",
-        "use delivery-flow to fix the implementation-review findings",
+        "use neurapaw-delivery:delivery-flow to start a fix run from the implementation-review findings",
+        "first action",
+        "/home/apeming/.codex/neurapaw-delivery/skills/delivery-flow/skill.md",
+        "loaded neurapaw-delivery:delivery-flow as top-level controller",
+        "before loading subordinate skills",
+        "not use `superpowers:*` as the top-level process skill",
+        "do not start code changes until delivery-flow has confirmed or selected execution_strategy",
     ):
         assert marker in _normalized(output_contract)
 
@@ -541,6 +564,54 @@ def test_skill_doc_declares_routing_contract_via_sections_and_markers() -> None:
         when_to_yield
     )
     assert "task by task" in use_it_when
+
+
+def test_delivery_flow_declares_implementation_review_handoff_strategy_choice() -> None:
+    skill_doc = _read("skills/delivery-flow/SKILL.md")
+    activation_proof = _section_body(skill_doc, "Activation Proof")
+    execution_strategy = _section_body(skill_doc, "Execution Strategy")
+    handoff = _section_body(skill_doc, "Implementation-Review Handoff")
+
+    for marker in (
+        "neurapaw-delivery:delivery-flow",
+        "must load this `skill.md` before loading subordinate skills",
+        "loaded neurapaw-delivery:delivery-flow as top-level controller",
+        "must not use any subordinate skill as the top-level process skill",
+        "failed activation",
+    ):
+        assert marker in _normalized(activation_proof)
+
+    for marker in (
+        "implementation-review findings",
+        "start a fix run",
+        "first prove activation",
+        "fix scope",
+        "findings",
+        "active plan",
+        "linked spec",
+        "affected files",
+        "required verification",
+    ):
+        assert marker in _normalized(handoff)
+
+    for marker in (
+        "must stop before code changes",
+        "delivery-flow` execution_strategy options",
+        "subagent-driven",
+        "inline",
+        "delivery-flow` stays the top-level controller",
+        "which approach",
+        "owner selects",
+        "execution_strategy",
+    ):
+        assert marker in _normalized(handoff)
+
+    for marker in (
+        "implementation-review handoff",
+        "must ask once before code changes",
+        "must not treat the handoff prompt as permission to start fixing",
+    ):
+        assert marker in _normalized(execution_strategy)
 
 
 def test_pass_path_preserves_expected_owner_facing_contract_in_both_modes() -> None:

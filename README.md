@@ -38,6 +38,9 @@ Codex versus Claude/Cursor/OpenCode capability split.
 - execution-strategy priority is `owner explicit instruction -> active run state -> repository-local preset -> delivery-flow default -> upstream generic behavior`
 - in `superpowers-backed`, `subagent-driven` uses subagents and explicit `inline` stays valid in the current session; `fallback` preserves the same owner-facing loop natively
 - if `execution_strategy=unresolved`, the main agent may ask once after planning; otherwise it must not reopen a generic execution-choice prompt
+- after an `implementation-review` blocker handoff, unresolved execution strategy must be selected before code changes start
+- `Subagent-driven` and `Inline` are `delivery-flow` execution_strategy options; `delivery-flow` remains the top-level controller for both
+- explicit `neurapaw-delivery:delivery-flow` prompts should first confirm `Loaded neurapaw-delivery:delivery-flow as top-level controller.`
 - the owner can explicitly change execution strategy mid-run, and the new strategy applies from the next schedulable task
 - once `delivery-flow` owns post-plan workflow, upstream generic templates must not override a determined strategy
 - `fix` is non-terminal, always re-enters `review`, and does not stop at task boundaries
@@ -59,11 +62,16 @@ Fetch and follow instructions from https://raw.githubusercontent.com/NeuraPawLab
 Manual install from the standard skill clone path:
 
 ```bash
+git clone https://github.com/NeuraPawLabs/delivery-flow.git ~/.codex/neurapaw-delivery
 mkdir -p ~/.agents/skills
-ln -s ~/.codex/delivery-flow/skills/delivery-flow ~/.agents/skills/delivery-flow
-ln -s ~/.codex/delivery-flow/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
-ln -s ~/.codex/delivery-flow/skills/implementation-review ~/.agents/skills/implementation-review
+ln -s ~/.codex/neurapaw-delivery/skills/delivery-flow ~/.agents/skills/delivery-flow
+ln -s ~/.codex/neurapaw-delivery/skills/using-delivery-flow ~/.agents/skills/using-delivery-flow
+ln -s ~/.codex/neurapaw-delivery/skills/implementation-review ~/.agents/skills/implementation-review
 ```
+
+Codex displays these entries with the `neurapaw-delivery` source namespace
+from `.codex-plugin/plugin.json`, for example
+`neurapaw-delivery:delivery-flow`.
 
 Shared skill surface:
 
@@ -187,7 +195,7 @@ Key rules:
 ## Verification
 
 ```bash
-cd ~/.codex/delivery-flow
+cd ~/.codex/neurapaw-delivery
 uv run pytest
 ```
 
@@ -206,6 +214,8 @@ This repository centers on one runtime-backed owner-facing workflow loop:
 - after planning, the main agent keeps execution moving until a terminal stop
 - in `superpowers-backed`, `subagent-driven` runs post-plan `dev/review/fix` through subagents and explicit `inline` runs them in the current session; `fallback` preserves the same contract natively
 - if `execution_strategy` is unresolved, the main agent may ask once after planning
+- after an `implementation-review` blocker handoff starts a fix run, unresolved execution strategy must be selected before code changes start
+- `Subagent-driven` and `Inline` are `delivery-flow` execution_strategy options; `delivery-flow` remains the top-level controller for both
 - if `execution_strategy` is already determined, the skill must not reopen a generic execution-choice prompt
 - if the owner explicitly changes execution strategy mid-run, the new strategy applies from the next schedulable task
 - once `delivery-flow` owns post-plan workflow, upstream generic templates do not override the determined strategy

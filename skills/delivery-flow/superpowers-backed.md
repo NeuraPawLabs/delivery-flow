@@ -17,6 +17,7 @@ Use this mode when the required `superpowers` capabilities are available.
 ## Execution Strategy Rules
 
 - if `execution_strategy=unresolved`, the main agent may ask once after planning before dispatching post-plan work
+- if an `implementation-review` handoff starts a fix run and `execution_strategy=unresolved`, the main agent must ask once before code changes instead of immediately using subordinate `superpowers` skills
 - if execution strategy is already determined, `superpowers-backed` must not re-open that choice through generic upstream templates
 - if no stronger preset exists, `superpowers-backed` defaults determined post-plan strategy to `subagent-driven`
 - `inline` remains a valid explicit strategy in this mode when chosen by the owner or a stronger preset

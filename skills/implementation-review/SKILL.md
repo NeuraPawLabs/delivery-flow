@@ -98,7 +98,7 @@ Language rule for human-facing review output:
 Set `Next Action` by result:
 
 - `pass`: say no follow-up `delivery-flow` run is needed.
-- `blocker`: include a ready-to-run handoff prompt that starts with `Use delivery-flow to fix the implementation-review findings:` and lists the findings, active plan, linked spec, affected files, and required verification.
+- `blocker`: include a ready-to-run handoff prompt that starts with `Use neurapaw-delivery:delivery-flow to start a fix run from the implementation-review findings:` and lists the findings, active plan, linked spec, affected files, and required verification. Add a `First action` block requiring the next agent to read `/home/apeming/.codex/neurapaw-delivery/skills/delivery-flow/SKILL.md` before loading subordinate skills, reply with `Loaded neurapaw-delivery:delivery-flow as top-level controller.`, and not use `superpowers:*` as the top-level process skill. Add: `Do not start code changes until delivery-flow has confirmed or selected execution_strategy.`
 - `needs_owner_decision`: ask the exact owner question needed before any fix run starts.
 
 ## Common Mistakes

@@ -1,0 +1,35 @@
+{
+  "name": "neurapaw-delivery",
+  "version": "0.1.0",
+  "description": "Router-first delivery orchestration skills for ongoing delivery threads.",
+  "author": {
+    "name": "NeuraPawLabs"
+  },
+  "homepage": "https://github.com/NeuraPawLabs/delivery-flow",
+  "repository": "https://github.com/NeuraPawLabs/delivery-flow",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "delivery-flow",
+    "routing",
+    "orchestration",
+    "review"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "NeuraPaw Delivery",
+    "shortDescription": "Router-first delivery and implementation review skills.",
+    "longDescription": "NeuraPaw Delivery provides delivery-flow routing, execution, and independent implementation review skills for coding agents.",
+    "developerName": "NeuraPawLabs",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use delivery-flow for this implementation thread.",
+      "Run implementation-review on this project."
+    ]
+  }
+}

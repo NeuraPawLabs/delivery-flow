@@ -14,6 +14,14 @@ Use these scenarios to check that the skill still shapes behavior correctly.
 - start one session whose task clearly matches the shared skill descriptions in `skills/delivery-flow/SKILL.md` or `skills/using-delivery-flow/SKILL.md`
 - expect the skill to be selected in both cases
 
+## Scenario 2B: Explicit Namespaced Activation Is Observable
+
+- owner explicitly names `neurapaw-delivery:delivery-flow`
+- expect the main agent to read `neurapaw-delivery:delivery-flow` before subordinate skills
+- expect the first owner-facing response to include `Loaded neurapaw-delivery:delivery-flow as top-level controller.`
+- expect `superpowers:*` skills to be subordinate only
+- if observable skill-read output shows only `superpowers:*` and not `neurapaw-delivery:delivery-flow`, treat activation as failed
+
 ## Scenario 2A: New Feature, No Ongoing Thread
 
 - request is a brand-new task with no ongoing delivery thread
@@ -77,6 +85,18 @@ Use these scenarios to check that the skill still shapes behavior correctly.
 - a run is already active
 - owner supplies new review findings
 - expect the workflow to stay inside `delivery-flow`
+
+## Scenario 8B.0: Implementation Review Handoff Starts Fix Run
+
+- `implementation-review` returns blocker findings
+- owner copies the `Use neurapaw-delivery:delivery-flow to start a fix run from the implementation-review findings:` handoff prompt
+- execution strategy is unresolved
+- expect `delivery-flow` to establish fix scope from findings, active plan, linked spec, affected files, and required verification
+- expect `delivery-flow` to stop before code changes
+- expect two `delivery-flow` execution_strategy options: `Subagent-driven` and `Inline`
+- expect both options to state that `delivery-flow` remains the top-level controller
+- expect the main agent to ask `Which approach?`
+- expect no subordinate `superpowers` fix/development skill to start before the owner selects `execution_strategy`
 
 ## Scenario 8B.1: Review Analysis Or Comparison Inside Active Delivery Thread
 
